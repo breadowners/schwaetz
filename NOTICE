@@ -1,0 +1,18 @@
+Schwätz
+Copyright 2026 Mengxi He
+
+Original application code is licensed under Apache-2.0; see LICENSE.
+
+phonetic_model.py adapts the architecture setup and inference flow from
+lingjzhu/zipa, commit 21e9e8aa4cc6c130cb05d836a1979886f9245302.
+ZIPA repository: Copyright (c) 2025 jzhu, MIT (licenses/ZIPA-MIT.txt).
+ZIPA/icefall Zipformer and scaling code:
+Copyright 2022-2023 Xiaomi Corp. (authors Daniel Povey and Zengwei Yao),
+Apache-2.0. zipa_inference_ops.py provides modified, inference-only PyTorch
+versions of the Swoosh activation formulas; CUDA/k2 training is not included.
+The full upstream inference files are downloaded separately with their headers.
+https://github.com/lingjzhu/zipa
+
+Model weights, dictionary data, voice models, and third-party packages are not
+part of this source license. Their separate terms and attribution requirements
+apply; see THIRD_PARTY.md. No private class notes or recordings are distributed.

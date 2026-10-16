@@ -1,0 +1,9 @@
+{
+  "name": "luxembourgish-speaking-companion",
+  "private": true,
+  "scripts": {
+    "phone": ".venv/bin/python phone.py",
+    "dev": ".venv/bin/python -m uvicorn server:app --host 127.0.0.1 --port 8765 --no-access-log",
+    "test": ".venv/bin/python -m pytest tests -q && node --test tests/*.test.mjs"
+  }
+}

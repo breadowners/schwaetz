@@ -1,0 +1,26 @@
+.venv/
+.cache/
+models/
+__pycache__/
+.pytest_cache/
+.env
+*.log
+*.pem
+*.key
+*.wav
+
+# Private user data and local configuration
+.DS_Store
+.env.*
+!.env.example
+notes/
+*.mp3
+*.m4a
+*.mp4
+*.ogg
+*.webm
+*.flac
+*.aiff
+*.mov
+*.docx
+*.pptx

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#fafafa">
+  <meta name="description" content="Luxembourgish speaking practice, with spoken corrections.">
+  <title>Schwätz · Luxembourgish</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/style.css?v=10">
+  <script type="module" src="/app.js?v=10"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Schwätz home">Schwätz</a>
+      <div class="top-actions"><span id="connection" class="connection"><span class="status-dot"></span><span id="connection-text">Connecting</span></span><button id="settings-button" class="text-button">Settings</button></div>
+    </header>
+    <main>
+      <nav class="mode-tabs" aria-label="Practice mode">
+        <button class="mode-tab active" data-mode="conversation">Speak</button>
+        <button class="mode-tab" data-mode="repeat">Sounds</button>
+        <button class="mode-tab" data-mode="review">Review</button>
+      </nav>
+      <div class="workspace">
+        <div id="conversation-options" class="conversation-options">
+          <label class="sr-only" for="scenario-select">Conversation topic</label><select id="scenario-select"></select>
+          <button id="source-button" class="text-button">Lesson source</button>
+        </div>
+        <section class="practice-panel" aria-label="Speaking practice">
+          <div class="panel-top"><div><span id="practice-label" class="field-label">Speaking</span><h1 id="scenario-title">At the restaurant</h1></div><button id="restart-button" class="text-button" aria-label="Start a new conversation">Reset</button></div>
+          <div id="welcome" class="welcome"><p id="mission" class="mission"></p><button id="start-button" class="primary-button">Start conversation</button><p class="welcome-footnote">Listen, reply, then practise any correction.</p></div>
+          <div id="conversation" class="conversation" aria-live="polite" aria-relevant="additions" hidden></div>
+          <div id="repeat-panel" class="repeat-panel" hidden>
+            <label class="sr-only" for="vocab-group">Vocabulary group</label><select id="vocab-group"></select>
+            <div class="repeat-card"><h2 id="repeat-text"></h2><p id="repeat-translation"></p><p class="say-target">Say: <strong id="spoken-target"></strong></p><button id="reference-button" class="secondary-button"><span data-icon="volume"></span>Listen</button></div>
+            <div class="repeat-nav"><button id="previous-word" class="text-button">Previous</button><span id="word-position"></span><button id="next-word" class="text-button">Next</button></div>
+            <details class="custom-phrase"><summary>Use another phrase or recording</summary><label class="field-label" for="custom-target">Phrase · up to ten words</label><textarea id="custom-target" rows="2" maxlength="300" placeholder="Ech hätt gär en Dësch."></textarea><button id="use-custom-target" class="secondary-button">Use phrase</button><label class="recording-file">Audio file<input id="practice-recording" type="file" accept="audio/*,.wav,.mp3,.m4a,.webm,.ogg"></label></details>
+            <div id="repeat-result" aria-live="polite"></div>
+          </div>
+          <section id="coach-panel" class="coach-panel" aria-label="Spoken correction" aria-live="polite" hidden>
+            <span id="coach-kind" class="field-label">Correction</span><h2 id="coach-target"></h2><p id="coach-explanation"></p><p id="coach-result" class="coach-result"></p>
+            <div class="coach-actions"><button id="coach-listen" class="secondary-button"><span data-icon="volume"></span>Listen</button><button id="coach-continue" class="text-button">Continue conversation</button></div>
+          </section>
+          <div id="transcript-check" class="transcript-check" hidden><label for="heard-text">Check the transcript</label><textarea id="heard-text" rows="2"></textarea><button id="send-transcript" class="primary-button">Send reply</button></div>
+          <div id="error-box" class="error-box" role="alert" hidden><span id="error-text"></span><button id="retry-button" class="text-button" hidden>Retry reply</button></div>
+          <div class="speaking-dock" id="speaking-dock" hidden>
+            <div class="mic-control"><button id="mic-button" class="mic-button" aria-label="Start recording" disabled><span data-icon="mic"></span></button><div><strong id="mic-label">Tap to speak</strong><span id="mic-detail">Audio is processed on your Mac.</span></div><span id="record-clock" class="record-clock"></span></div>
+            <div class="dock-helpers"><button id="hint-button" class="text-button">Hint</button><button id="type-button" class="text-button">Type</button><span id="audio-actions" hidden><button id="my-audio-button" class="text-button">My recording</button></span></div>
+            <div id="type-panel" class="type-panel" hidden><label class="sr-only" for="typed-text">Your reply in Luxembourgish</label><textarea id="typed-text" placeholder="Your reply in Luxembourgish…" rows="2"></textarea><button id="send-typed" class="secondary-button">Send</button></div>
+          </div>
+          <div class="panel-footer"><span id="runtime-label">Local · A2.1</span><button id="export-button" class="text-button" hidden>Save conversation</button></div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <dialog id="settings-dialog">
+    <div class="dialog-heading"><h2>Settings</h2><button class="icon-button close-dialog" aria-label="Close settings"><span data-icon="close"></span></button></div>
+    <label class="field-label" for="model-select">Conversation model</label><select id="model-select"></select>
+    <p id="model-detail" class="dialog-intro" aria-live="polite">Checking conversation models…</p>
+    <label class="setting-row"><span>Read replies aloud</span><input id="auto-speak" type="checkbox" checked></label>
+    <label class="setting-row"><span>Read corrections aloud<small>Pause to listen and repeat before continuing.</small></span><input id="spoken-corrections" type="checkbox" checked></label>
+    <label class="setting-row"><span>Slower conversation voice</span><input id="slow-voice" type="checkbox"></label>
+    <label class="setting-row"><span>Show English translations</span><input id="show-translations" type="checkbox"></label>
+    <label class="setting-row"><span>Check transcript before sending</span><input id="check-transcript" type="checkbox"></label>
+    <label class="setting-row"><span>Finish after a pause</span><input id="auto-stop" type="checkbox" checked></label>
+    <label class="setting-row" for="pause-duration"><span>Pause before sending</span><select id="pause-duration"><option value="1200">1.2 s · quicker</option><option value="2000">2 s · more time</option><option value="3000">3 s · longer pauses</option></select></label>
+    <label class="setting-row"><span>Hands-free conversation<small>Listen after replies and examples. Resume after a repeat with no clear sound mismatch.</small></span><input id="hands-free" type="checkbox"></label>
+    <details class="setup-status"><summary>Models &amp; sound feedback</summary><p id="setup-detail">Checking models…</p><p>The conversation model corrects wording from the transcript. ZIPA checks recorded sounds against a university dictionary. Sound tips are experimental; a match is not a pronunciation grade.</p><p>Examples use synthetic Luxembourgish audio. Your teacher and <a href="https://lod.lu/" target="_blank" rel="noreferrer">LOD</a> are the reference when they differ. Audio is processed locally with either conversation model.</p></details>
+  </dialog>
+  <dialog id="source-dialog"><div class="dialog-heading"><h2>Lesson source</h2><button class="icon-button close-dialog" aria-label="Close lesson source"><span data-icon="close"></span></button></div><p id="source-path" class="dialog-intro"></p><pre id="source-text"></pre><p class="audio-note">Generated practice. Your original notes and course files are preserved.</p></dialog>
+</body>
+</html>
