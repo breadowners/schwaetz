@@ -8,8 +8,8 @@
   <title>Schwätz · Luxembourgish</title>
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="stylesheet" href="/style.css?v=10">
-  <script type="module" src="/app.js?v=10"></script>
+  <link rel="stylesheet" href="/style.css?v=11">
+  <script type="module" src="/app.js?v=11"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -30,7 +30,7 @@
         </div>
         <section class="practice-panel" aria-label="Speaking practice">
           <div class="panel-top"><div><span id="practice-label" class="field-label">Speaking</span><h1 id="scenario-title">At the restaurant</h1></div><button id="restart-button" class="text-button" aria-label="Start a new conversation">Reset</button></div>
-          <div id="welcome" class="welcome"><p id="mission" class="mission"></p><button id="start-button" class="primary-button">Start conversation</button><p class="welcome-footnote">Listen, reply, then practise any correction.</p></div>
+          <div id="welcome" class="welcome"><p id="mission" class="mission"></p><button id="start-button" class="primary-button">Start conversation</button><p id="welcome-footnote" class="welcome-footnote">Listen, reply, then practise any correction.</p></div>
           <div id="conversation" class="conversation" aria-live="polite" aria-relevant="additions" hidden></div>
           <div id="repeat-panel" class="repeat-panel" hidden>
             <label class="sr-only" for="vocab-group">Vocabulary group</label><select id="vocab-group"></select>
@@ -59,6 +59,15 @@
     <div class="dialog-heading"><h2>Settings</h2><button class="icon-button close-dialog" aria-label="Close settings"><span data-icon="close"></span></button></div>
     <label class="field-label" for="model-select">Conversation model</label><select id="model-select"></select>
     <p id="model-detail" class="dialog-intro" aria-live="polite">Checking conversation models…</p>
+    <details id="own-key-section" class="own-key">
+      <summary>Use your own API key</summary>
+      <p class="dialog-intro">Connect an <a href="https://openrouter.ai/settings/keys" target="_blank" rel="noreferrer">OpenRouter key</a>. The key stays in this tab's memory and passes through this app's server to OpenRouter. It is not saved in browser storage or on the server. Use a key with a provider spending cap.</p>
+      <label class="field-label" for="provider-key">OpenRouter API key</label>
+      <input id="provider-key" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your API key">
+      <label class="setting-row"><span>Free models only<small>Turning this off allows models that charge your OpenRouter account.</small></span><input id="free-models-only" type="checkbox" checked></label>
+      <div class="key-actions"><button id="connect-key" class="secondary-button">Connect</button><button id="disconnect-key" class="text-button" hidden>Disconnect</button></div>
+      <p id="key-status" class="dialog-intro" role="status">No personal key connected. OpenCode promotional free access is separate and is not unlocked by pasting a key here.</p>
+    </details>
     <label class="setting-row"><span>Read replies aloud</span><input id="auto-speak" type="checkbox" checked></label>
     <label class="setting-row"><span>Read corrections aloud<small>Pause to listen and repeat before continuing.</small></span><input id="spoken-corrections" type="checkbox" checked></label>
     <label class="setting-row"><span>Slower conversation voice</span><input id="slow-voice" type="checkbox"></label>
@@ -67,7 +76,7 @@
     <label class="setting-row"><span>Finish after a pause</span><input id="auto-stop" type="checkbox" checked></label>
     <label class="setting-row" for="pause-duration"><span>Pause before sending</span><select id="pause-duration"><option value="1200">1.2 s · quicker</option><option value="2000">2 s · more time</option><option value="3000">3 s · longer pauses</option></select></label>
     <label class="setting-row"><span>Hands-free conversation<small>Listen after replies and examples. Resume after a repeat with no clear sound mismatch.</small></span><input id="hands-free" type="checkbox"></label>
-    <details class="setup-status"><summary>Models &amp; sound feedback</summary><p id="setup-detail">Checking models…</p><p>The conversation model corrects wording from the transcript. ZIPA checks recorded sounds against a university dictionary. Sound tips are experimental; a match is not a pronunciation grade.</p><p>Examples use synthetic Luxembourgish audio. Your teacher and <a href="https://lod.lu/" target="_blank" rel="noreferrer">LOD</a> are the reference when they differ. Audio is processed locally with either conversation model.</p></details>
+    <details class="setup-status"><summary>Models &amp; sound feedback</summary><p id="setup-detail">Checking models…</p><p>The conversation model corrects wording from the transcript. ZIPA checks recorded sounds against a university dictionary. Sound tips are experimental; a match is not a pronunciation grade.</p><p id="audio-processing-note">Examples use synthetic Luxembourgish audio. Your teacher and <a href="https://lod.lu/" target="_blank" rel="noreferrer">LOD</a> are the reference when they differ. Audio is processed locally with either conversation model.</p></details>
   </dialog>
   <dialog id="source-dialog"><div class="dialog-heading"><h2>Lesson source</h2><button class="icon-button close-dialog" aria-label="Close lesson source"><span data-icon="close"></span></button></div><p id="source-path" class="dialog-intro"></p><pre id="source-text"></pre><p class="audio-note">Generated practice. Your original notes and course files are preserved.</p></dialog>
 </body>

@@ -104,6 +104,63 @@ loaded for up to thirty idle minutes. Recorded conversation turns run sound
 analysis and reply generation together after transcription. Sound evidence can
 appear before the reply and remains available if the conversation request fails.
 
+## Bring your own API key
+
+Settings → Use your own API key supports an individual **OpenRouter** key.
+The app verifies the key with the provider, loads its current model catalog,
+and defaults to **Free models only**. Disabling this filter before connecting
+allows models billed to that person's own provider account. Set a spending cap
+on the key at [OpenRouter](https://openrouter.ai/settings/keys).
+
+The key is kept in the current browser tab's JavaScript memory. The input is
+cleared immediately; refreshing, leaving the page, or Disconnect clears it.
+It is not written to localStorage, sessionStorage, the service-worker cache,
+a database, files, or logs by this app. The key travels through this app's server
+for each provider request and is kept only for that request's lifetime. Use HTTPS
+for any hosted deployment. Only loopback development accepts HTTP.
+
+Keys are attached only to the selected person's conversation and warm-up requests.
+Speech recordings never go to OpenRouter. The provider receives the transcript,
+recent conversation and selected practice context. Price metadata is rechecked
+before every turn; an unavailable or no-longer-free model is rejected when the
+free-only filter applies. There is no model or account fallback. Provider quotas,
+privacy policies and free model availability still apply. A successful catalog
+connection does not establish Luxembourgish grammar or pronunciation accuracy.
+
+OpenCode's promotional free models are separate from OpenRouter's catalog.
+An OpenCode token cannot be pasted into this connection to unlock those models.
+OpenCode's [hosted-service terms](https://opencode.ai/legal/terms-of-service)
+restrict use to internal use and exclude use for third parties' benefit;
+permission for a shared public free-token backend must not be assumed. The
+existing OpenCode runtime remains a personal/local feature.
+
+## Public BYOK deployment mode
+
+Start with `SPEAK_PUBLIC=1` for a deployment used by other people. This mode:
+
+- Does not start or share the host's OpenCode runtime or Ollama model inventory.
+- Requires each conversation request to carry that visitor's provider key.
+- Ignores the private vault, even if one is present or configured.
+- Uses built-in fictional practice and starter words, with explicit audio-hosting disclosure.
+- Requires HTTPS for API-key requests. Speech analysis still runs on the host.
+
+For example, behind a trusted HTTPS reverse proxy to localhost:
+
+```sh
+SPEAK_PUBLIC=1 SPEAK_ALLOWED_HOSTS=your-demo.example npm run dev
+```
+
+The API trusts forwarded HTTPS information only through Uvicorn's configured
+trusted proxy behavior; keep the backend bound to localhost. Production hosting
+still needs a stable HTTPS endpoint, bounded request/concurrency limits, resource
+monitoring and rollout/rollback. This mode is a deployment foundation, not a
+claim that a public service has already been deployed. BYOK covers language-model
+usage; hosting the ZLS/ZIPA/Piper speech services still requires compute.
+
+Provider-request tests use mocked keys/responses. The live unauthenticated model
+catalog was checked; a successful real-key paid/free completion has not been tested
+without an account key. API keys must be entered in the app, never in GitHub issues.
+
 ## Free conversation models through OpenCode
 
 Requires an installed **OpenCode v2** (`opencode --version`). The server starts a

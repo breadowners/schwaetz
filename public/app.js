@@ -27,7 +27,8 @@ const state = { scenarios: [], selected: 'restaurant', mode: 'conversation', sta
   recordingURL: null, playing: null, audioURL: null, generation: 0, controller: null, timer: null,
   audioContext: null, monitor: null, vocabulary: [], vocabIndex: 0, vocabGroup: '', pendingReply: false,
   userGesture: false, playedAssistant: false, soundURLs: [], customTarget: '', warmController: null,
-  coach: null, heldReply: null, correctionQueue: [], awaitingTutor: false, coachPractised: false, turnController: null };
+  coach: null, heldReply: null, correctionQueue: [], awaitingTutor: false, coachPractised: false, turnController: null,
+  byokKey: '', byokModels: [], byokFreeOnly: true, keyController: null };
 const optionIds = ['auto-speak', 'spoken-corrections', 'slow-voice', 'show-translations', 'check-transcript', 'auto-stop', 'hands-free'];
 let savedModel = '';
 try {
@@ -47,10 +48,23 @@ function updateModelInfo() {
   const online = state.mode !== 'repeat' && onlineSelected;
   const ready = state.mode === 'repeat' ? state.status?.pronunciation_ready : state.status?.speech_ready && state.status?.conversation_ready;
   if (ready) $('connection-text').textContent = online ? 'Online' : 'Local';
-  $('model-detail').textContent = onlineSelected
+  $('model-detail').textContent = selected.startsWith('byok/openrouter/')
+    ? `Uses your OpenRouter key for this tab. ${state.byokFreeOnly ? 'Free models only.' : 'Your selected model may charge your provider account.'} Transcripts go to OpenRouter; audio is processed on the app server.`
+    : state.status?.public_mode ? 'Connect your own API key. Audio is processed on the app server; the host does not provide conversation tokens.'
+    : onlineSelected
     ? 'Free for a limited time. Your transcript and selected lesson excerpt go to OpenCode. Audio is processed on your Mac. No paid fallback.'
     : 'Conversation and audio are processed on your Mac.';
-  $('runtime-label').textContent = online ? `${state.status.online_model_names?.[selected] || 'OpenCode'} · local audio` : 'Local · A2.1';
+  $('runtime-label').textContent = online ? `${state.status.online_model_names?.[selected] || 'OpenCode'} · ${state.status?.public_mode ? 'server' : 'local'} audio` : state.status?.public_mode ? 'Bring your own key' : 'Local · A2.1';
+}
+
+function applyPersonalModels(status) {
+  const models = state.byokModels || [];
+  status.models = [...models.map(m => m.id), ...status.models];
+  status.model_labels = {...status.model_labels, ...Object.fromEntries(models.map(m => [m.id, `${m.name} · ${m.free ? 'Free' : 'Paid'} · Your key`]))};
+  status.online_models = [...(status.online_models || []), ...models.map(m => m.id)];
+  status.online_model_names = {...status.online_model_names, ...Object.fromEntries(models.map(m => [m.id, m.name]))};
+  status.conversation_ready = Boolean(status.models.length);
+  if (!status.model && models.length) status.model = models[0].id;
 }
 
 function selectedScenario() { return state.scenarios.find(s => s.id === state.selected); }
@@ -60,7 +74,7 @@ function microphoneReady() { return state.mode === 'repeat' || state.coach ? sta
 function setBusy(busy, label = 'Thinking of a reply…', detail = 'Your partner is getting ready.') {
   state.busy = busy;
   $('mic-label').textContent = busy ? label : state.coach ? 'Record your attempt' : 'Tap to speak';
-  $('mic-detail').textContent = busy ? detail : state.coach ? 'Say the sentence above.' : 'Audio is processed on your Mac.';
+  $('mic-detail').textContent = busy ? detail : state.coach ? 'Say the sentence above.' : state.status?.public_mode ? 'Audio is processed on the app server.' : 'Audio is processed on your Mac.';
   if (!state.recording) $('mic-button').setAttribute('aria-label', state.coach ? 'Record your attempt' : 'Start recording');
   $('mic-button').classList.toggle('busy', busy);
   $('mic-button').disabled = busy || !microphoneReady() || !state.started || (state.coach?.target.length || 0) > 300;
@@ -73,6 +87,11 @@ function setBusy(busy, label = 'Thinking of a reply…', detail = 'Your partner 
   $('hint-button').hidden = state.mode !== 'conversation' || Boolean(state.coach);
 }
 async function api(path, options = {}) {
+  if (['/api/turn', '/api/warm'].includes(path) && state.byokKey) {
+    const selected = JSON.parse(options.body || '{}').model || '';
+    if (selected.startsWith('byok/openrouter/')) options = {...options, headers: {...options.headers,
+      'X-Provider-Key': state.byokKey, 'X-Free-Only': String(state.byokFreeOnly)}};
+  }
   const response = await fetch(path, options);
   if (!response.ok) {
     let message = `Request failed (${response.status}).`;
@@ -84,6 +103,7 @@ async function api(path, options = {}) {
 async function loadStatus() {
   try {
     state.status = await (await api('/api/status')).json();
+    applyPersonalModels(state.status);
     const ready = state.mode === 'repeat' ? state.status.pronunciation_ready : state.status.speech_ready && state.status.conversation_ready;
     $('connection').className = `connection ${ready ? 'ready' : (state.mode === 'repeat' ? state.status.pronunciation_error : state.status.speech_error) ? 'error' : ''}`;
     $('connection-text').textContent = ready ? 'Local' : state.status.speech_loading ? 'Loading' : 'Setup needed';
@@ -92,8 +112,15 @@ async function loadStatus() {
     $('model-select').replaceChildren(...state.status.models.map(name => { const option = document.createElement('option'); option.value = name; option.textContent = state.status.model_labels?.[name] || name; return option; }));
     $('model-select').value = state.status.models.includes(previous) ? previous : state.status.model;
     updateModelInfo();
+    if (state.status.public_mode && !state.byokKey) $('connection-text').textContent = 'Add your key';
     if (!state.busy && !state.recording) setBusy(false);
-    $('start-button').disabled = !state.status.speech_ready || !state.status.conversation_ready;
+    const needsKey = state.status.public_mode && !state.byokKey;
+    $('start-button').textContent = needsKey ? 'Connect your API key' : 'Start conversation';
+    $('start-button').disabled = !needsKey && (!state.status.speech_ready || !state.status.conversation_ready);
+    if (state.status.public_mode) {
+      $('welcome-footnote').textContent = 'Audio goes to the app server; transcripts go to your provider. Recordings are not saved.';
+      $('audio-processing-note').textContent = 'Examples use synthetic Luxembourgish audio. Recordings are processed on the app server, not on your phone. Sound feedback remains experimental.';
+    }
     if (!ready || !state.status.pronunciation_ready || state.status.online_loading) setTimeout(loadStatus, 4000);
   } catch {
     $('connection').className = 'connection error'; $('connection-text').textContent = 'Server disconnected';
@@ -175,6 +202,9 @@ function addMessage(role, content, data = {}) {
 }
 async function startSession() {
   clearError(); state.userGesture = true;
+  if (state.status?.public_mode && !state.byokKey) {
+    $('own-key-section').open = true; $('settings-dialog').showModal(); $('provider-key').focus(); return;
+  }
   if (!state.status?.speech_ready || !state.status?.conversation_ready) { showError('The models are still getting ready. Please check Settings.'); return; }
   const scenario = selectedScenario(); state.started = true;
   warmSelectedModel();
@@ -435,7 +465,7 @@ function monitorSilence(stream, started) {
   } catch { /* The stop button and one-minute cap remain available. */ }
 }
 async function recognise(blob, generation) {
-  setBusy(true, state.mode === 'repeat' || state.coach ? 'Checking sounds…' : 'Transcribing…', 'Your recording is analysed on your Mac.');
+  setBusy(true, state.mode === 'repeat' || state.coach ? 'Checking sounds…' : 'Transcribing…', state.status?.public_mode ? 'Your recording is analysed on the app server.' : 'Your recording is analysed on your Mac.');
   const controller = new AbortController(); state.controller = controller;
   try {
     if (state.coach) { await retryCorrection(blob, generation, controller.signal); return; }
@@ -612,6 +642,39 @@ $('export-button').addEventListener('click', () => {
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden) { cancelRecording(); stopAudio(); if (!state.pendingReply) setBusy(false); } });
 window.addEventListener('pagehide', () => { cancelRecording(); stopAudio(); });
+
+async function connectOwnKey() {
+  if (state.busy || state.recording || state.awaitingTutor) { $('key-status').textContent = 'Finish the current turn before changing your connection.'; return; }
+  const input = $('provider-key'); const key = input.value.trim(); input.value = '';
+  if (!key) { $('key-status').textContent = 'Enter your OpenRouter API key.'; return; }
+  if (key.length < 20 || key.length > 512 || /[^\x21-\x7e]/.test(key)) { $('key-status').textContent = 'Check the API key format. Paste only the key, without spaces or line breaks.'; return; }
+  state.keyController?.abort(); const controller = new AbortController(); state.keyController = controller;
+  $('connect-key').disabled = true; $('key-status').textContent = 'Checking your key and available models…';
+  const freeOnly = $('free-models-only').checked;
+  try {
+    const response = await api('/api/byok/models', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-Provider-Key': key}, body: JSON.stringify({free_only: freeOnly}), signal: controller.signal});
+    const data = await response.json();
+    if (state.keyController !== controller || controller.signal.aborted) return;
+    if (!data.models.length) throw new Error('No eligible models are available. Your key was not connected.');
+    state.byokKey = key; state.byokModels = data.models; state.byokFreeOnly = freeOnly;
+    $('disconnect-key').hidden = false; $('key-status').textContent = 'Connected for this tab. Refreshing or disconnecting clears the key.';
+    savedModel = data.models[0].id;
+    await loadStatus();
+  } catch (error) { if (error.name !== 'AbortError' && state.keyController === controller) $('key-status').textContent = error.message; }
+  finally { $('connect-key').disabled = false; }
+}
+function disconnectOwnKey() {
+  state.keyController?.abort(); state.keyController = null;
+  resetSession(); state.byokKey = ''; state.byokModels = []; state.byokFreeOnly = true;
+  $('provider-key').value = ''; $('free-models-only').checked = true;
+  $('disconnect-key').hidden = true; $('key-status').textContent = 'Disconnected. The key has been cleared from this tab.';
+  savedModel = ''; loadStatus();
+}
+$('connect-key').addEventListener('click', connectOwnKey);
+$('disconnect-key').addEventListener('click', disconnectOwnKey);
+$('provider-key').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); connectOwnKey(); } });
+window.addEventListener('pagehide', () => { state.keyController?.abort(); state.keyController = null; state.byokKey = ''; state.byokModels = []; });
+window.addEventListener('pageshow', event => { if (event.persisted) disconnectOwnKey(); });
 async function init() {
   try {
     const [scenarios, words] = await Promise.all([api('/api/scenarios').then(r => r.json()), api('/api/vocabulary').then(r => r.json())]);

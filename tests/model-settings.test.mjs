@@ -73,3 +73,17 @@ test('GLM selection persists and shows the correct online disclosure and model n
   vm.runInContext('updateModelInfo()', h.context);
   assert.equal(h.$('connection-text').textContent, 'Local');
 });
+
+test('personal model settings never persist the key', async () => {
+  const h = harness(); let stored;
+  const model = 'byok/openrouter/test/free:free';
+  h.state.byokKey = 'test-only-alpha-1234567890';
+  h.state.byokModels = [{id:model,name:'Test model',free:true}];h.state.byokFreeOnly=true;
+  h.context.localStorage.setItem = (name,value) => { stored=value; };
+  h.setStatus([], '');
+  await vm.runInContext('loadStatus()',h.context);
+  assert.equal(h.$('model-select').value,model);
+  vm.runInContext('saveSettings()',h.context);
+  assert.equal(stored.includes(h.state.byokKey),false);
+  assert.match(h.$('model-detail').textContent,/Free models only/);
+});

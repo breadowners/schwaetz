@@ -21,3 +21,14 @@ def test_configured_private_lesson_keeps_real_source_and_selected_sections(tmp_p
     text = content.scenario_context(scenario)
     assert "Selected learning content" in text
     assert "Do not include" not in text and "Not selected" not in text
+
+def test_public_mode_ignores_an_existing_private_vault(tmp_path, monkeypatch):
+    monkeypatch.setattr(content, "VAULT", tmp_path)
+    scenario = content.SCENARIOS["restaurant"]
+    path = tmp_path / scenario["source"]
+    path.parent.mkdir(parents=True)
+    path.write_text("## Restaurant dialogue and role practice\nPRIVATE CLASS MATERIAL\n")
+    monkeypatch.setattr(content, "PUBLIC_MODE", True)
+    assert "PRIVATE" not in content.scenario_context(scenario)
+    assert content.scenario_source(scenario)["source"] == "Built-in fictional practice"
+    assert len(content.vocabulary()) == 5

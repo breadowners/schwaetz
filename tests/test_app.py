@@ -99,6 +99,52 @@ def test_tutor_feedback_has_no_pronunciation_claims_by_design():
     assert "hide model answers" in prompt
     assert "NEVER German" in prompt
 
+def test_public_mode_hides_host_models_and_requires_a_personal_key(client, monkeypatch):
+    monkeypatch.setattr(server, "PUBLIC_MODE", True)
+    monkeypatch.setattr(server.opencode, "ready", True)
+    status = client.get("/api/status").json()
+    assert status["models"] == [] and status["online_models"] == []
+    assert status["public_mode"] is True
+    for model in ("test-local-model", server.OPENCODE_MODEL):
+        assert client.post("/api/warm", json={"model": model}).status_code == 401
+        assert client.post("/api/turn", json={"model": model, "scenario": "restaurant",
+                           "messages": [{"role": "user", "content": "Moien!"}]}).status_code == 401
+    assert client.post("/api/byok/models", headers={"X-Provider-Key": "test-only-alpha-1234567890"}, json={}).status_code == 400
+
+def test_own_key_turn_uses_explicit_credentials_and_preserves_audio_boundary(client, monkeypatch):
+    calls = []
+    async def generate(key, model, free_only, instructions, messages, schema):
+        calls.append((key, model, free_only))
+        return '{"reply":"Moien!","translation":"Hello!","feedback":"","better_sentence":""}'
+    monkeypatch.setattr(server.byok, "generate", generate)
+    body = {"model": server.byok.PREFIX + "test/free:free", "scenario": "restaurant",
+            "messages": [{"role": "user", "content": "Moien!"}]}
+    assert client.post("/api/turn", json=body).status_code == 401
+    for key in ("test-only-alpha-1234567890", "test-only-beta-1234567890"):
+        result = client.post("/api/turn", json=body, headers={"X-Provider-Key": key})
+        assert result.status_code == 200
+        assert result.json()["pronunciation_assessed"] is False
+        assert key not in result.text
+    assert [call[0] for call in calls] == ["test-only-alpha-1234567890", "test-only-beta-1234567890"]
+    assert all(call[2] is True for call in calls)
+
+def test_public_https_own_key_turn_uses_only_builtin_context(client, monkeypatch):
+    import content
+    monkeypatch.setattr(server, "PUBLIC_MODE", True)
+    monkeypatch.setattr(content, "PUBLIC_MODE", True)
+    client.base_url = "https://testserver"
+    async def generate(key, model, free_only, instructions, messages, schema):
+        assert key == "test-only-alpha-1234567890"
+        assert "No private class notes" in instructions
+        assert free_only is True
+        return '{"reply":"Moien!","translation":"Hello!","feedback":"","better_sentence":""}'
+    monkeypatch.setattr(server.byok, "generate", generate)
+    response = client.post("/api/turn", headers={"X-Provider-Key": "test-only-alpha-1234567890"}, json={
+        "model": server.byok.PREFIX + "test/free:free", "scenario": "restaurant",
+        "messages": [{"role": "user", "content": "Moien!"}]})
+    assert response.status_code == 200
+    assert response.json()["source"] == "Built-in fictional practice"
+
 def test_real_audio_decoder_accepts_browser_roundtrip_wav():
     from faster_whisper.audio import decode_audio
     stream = io.BytesIO()

@@ -12,6 +12,7 @@ from contextlib import asynccontextmanager
 from collections import OrderedDict
 
 import httpx
+import byok
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -27,6 +28,7 @@ ASR_PATH = ROOT / "models/asr"
 VOICE_PATH = ROOT / "models/lb_LU-femaleLOD-medium.onnx"
 OLLAMA_URL = "http://127.0.0.1:11434"
 DEFAULT_MODEL = os.environ.get("SPEAK_MODEL", OPENCODE_MODEL)
+PUBLIC_MODE = os.environ.get("SPEAK_PUBLIC") == "1"
 MAX_AUDIO_BYTES = 8 * 1024 * 1024
 MAX_RECORD_SECONDS = 60
 APPLE_SILICON = platform.system() == "Darwin" and platform.machine() == "arm64"
@@ -156,12 +158,13 @@ opencode = OpenCodeRuntime()
 async def lifespan(app):
     task = asyncio.create_task(asyncio.to_thread(speech.load))
     phone_task = asyncio.create_task(asyncio.to_thread(pronunciation.load))
-    cloud_task = asyncio.create_task(opencode.start())
+    cloud_task = asyncio.create_task(opencode.start()) if not PUBLIC_MODE else None
     try:
         yield
     finally:
-        cloud_task.cancel()
-        await asyncio.gather(cloud_task, return_exceptions=True)
+        if cloud_task:
+            cloud_task.cancel()
+            await asyncio.gather(cloud_task, return_exceptions=True)
         await opencode.close()
         await task
         await phone_task
@@ -188,6 +191,8 @@ async def local_requests_only(request, call_next):
     return response
 
 async def installed_models():
+    if PUBLIC_MODE:
+        return []
     try:
         async with httpx.AsyncClient(timeout=3) as client:
             response = await client.get(OLLAMA_URL + "/api/tags")
@@ -198,8 +203,8 @@ async def installed_models():
 
 @app.get("/api/status")
 async def status():
-    models = await installed_models()
-    online_models = [m for m in FREE_MODELS if opencode.ready and m in opencode.available_models]
+    models = [] if PUBLIC_MODE else await installed_models()
+    online_models = [m for m in FREE_MODELS if not PUBLIC_MODE and opencode.ready and m in opencode.available_models]
     models = online_models + models
     return {"speech_ready": bool(speech.asr and speech.voice), "speech_loading": speech.loading,
             "speech_error": speech.error, "conversation_ready": bool(models), "models": models,
@@ -210,7 +215,8 @@ async def status():
             "online_error": opencode.error,
             "recognition": f"ZLS large-v3-turbo · local · {speech.encoder_backend}",
             "recognition_warning": speech.encoder_warning, "voice": "Piper · Luxembourgish",
-            "privacy": "Recordings are processed on this computer and are not saved.",
+            "public_mode": PUBLIC_MODE,
+            "privacy": "Recordings are sent to this app's server for speech analysis and are not saved." if PUBLIC_MODE else "Recordings are processed on this computer and are not saved.",
             "pronunciation_ready": bool(pronunciation.recognizer),
             "pronunciation_loading": pronunciation.loading, "pronunciation_error": pronunciation.error,
             "pronunciation_provider": "University ZIPA · local · experimental",
@@ -302,14 +308,40 @@ class Message(BaseModel):
 class TurnRequest(BaseModel):
     scenario: str
     messages: list[Message] = Field(min_length=1, max_length=24)
-    model: str = Field(default=DEFAULT_MODEL, max_length=100)
+    model: str = Field(default=DEFAULT_MODEL, max_length=200)
     mode: str = Field(default="conversation", pattern="^(conversation|review)$")
 
 class WarmRequest(BaseModel):
-    model: str = Field(min_length=1, max_length=100)
+    model: str = Field(min_length=1, max_length=200)
+
+def personal_key(request: Request):
+    if request.url.scheme != "https" and (PUBLIC_MODE or request.url.hostname not in {"localhost", "127.0.0.1", "::1", "testserver"}):
+        raise HTTPException(400, "Use HTTPS before entering a provider key.")
+    key = request.headers.get("x-provider-key", "")
+    if not 20 <= len(key) <= 512 or not all(33 <= ord(c) <= 126 for c in key):
+        raise HTTPException(401, "Connect your own OpenRouter API key in Settings.")
+    return key
+
+class ConnectRequest(BaseModel):
+    free_only: bool = True
+
+@app.post("/api/byok/models")
+async def connect_personal_key(body: ConnectRequest, request: Request):
+    key = personal_key(request)
+    try:
+        return {"models": await byok.connect(key, body.free_only)}
+    except httpx.HTTPError:
+        raise HTTPException(502, "OpenRouter is unavailable. Your key was not saved.")
+    except (KeyError, ValueError, TypeError):
+        raise HTTPException(502, "OpenRouter returned an unreadable model list. Your key was not saved.")
 
 @app.post("/api/warm")
-async def warm_model(body: WarmRequest):
+async def warm_model(body: WarmRequest, request: Request):
+    if body.model.startswith(byok.PREFIX):
+        personal_key(request)
+        return {"ready": True, "model": body.model}
+    if PUBLIC_MODE:
+        raise HTTPException(401, "Connect your own provider key in Settings.")
     if body.model in FREE_MODELS:
         if not opencode.ready or body.model not in opencode.available_models:
             raise HTTPException(503, opencode.error or "The selected free model isn't available through OpenCode. Try again shortly or choose another model in Settings.")
@@ -361,13 +393,17 @@ Lesson source: {metadata['source']} — {metadata['section']}
 <lesson>\n{scenario_context(scenario)}\n</lesson>"""
 
 @app.post("/api/turn")
-async def turn(body: TurnRequest):
+async def turn(body: TurnRequest, request: Request):
     if body.scenario not in SCENARIOS:
         raise HTTPException(404, "Unknown conversation.")
     if body.messages[-1].role != "user":
         raise HTTPException(400, "Please speak or type your reply first.")
-    online = body.model in FREE_MODELS
-    if online and (not opencode.ready or body.model not in opencode.available_models):
+    own_key = body.model.startswith(byok.PREFIX)
+    key = personal_key(request) if own_key else None
+    if PUBLIC_MODE and not own_key:
+        raise HTTPException(401, "Connect your own provider key in Settings.")
+    online = body.model in FREE_MODELS or own_key
+    if online and not own_key and (not opencode.ready or body.model not in opencode.available_models):
         raise HTTPException(503, opencode.error or "The selected free model isn't available through OpenCode. Try again shortly or choose another model in Settings.")
     if not online and body.model not in await installed_models():
         raise HTTPException(503, "The selected conversation model isn't available in Ollama.")
@@ -378,7 +414,11 @@ async def turn(body: TurnRequest):
                "messages": [{"role": "system", "content": tutor_prompt(scenario, body.mode == "review")}] +
                            [m.model_dump() for m in body.messages]}
     try:
-        if online:
+        if own_key:
+            text = await byok.generate(key, body.model, request.headers.get("x-free-only", "true") != "false",
+                                       payload["messages"][0]["content"], payload["messages"][1:], TutorReply.model_json_schema())
+            result = TutorReply.model_validate_json(text)
+        elif online:
             text = await opencode.generate(payload["messages"][0]["content"],
                                            payload["messages"][1:], TutorReply.model_json_schema(), body.model)
             result = TutorReply.model_validate_json(text)
@@ -392,6 +432,8 @@ async def turn(body: TurnRequest):
     except httpx.TimeoutException:
         raise HTTPException(504, "The conversation model is taking too long. Retry or choose another model in Settings.")
     except (httpx.HTTPError, ValueError, KeyError, TypeError, RuntimeError):
+        if own_key:
+            raise HTTPException(502, "Your selected provider model couldn't produce a valid reply. Retry or choose another model with your key. No other account or model was used.")
         if online:
             raise HTTPException(502, "The selected free OpenCode model couldn't reply. It may be busy or rate-limited. Retry or choose another model in Settings. No paid model was used.")
         raise HTTPException(502, "The conversation model couldn't produce a reply. Your turn is still here; please retry.")

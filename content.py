@@ -4,6 +4,7 @@ import os
 import re
 
 VAULT = Path(os.environ.get("SPEAK_VAULT", Path(__file__).resolve().parent.parent / "notes")).expanduser()
+PUBLIC_MODE = os.environ.get("SPEAK_PUBLIC") == "1"
 SCENARIOS = {
     "restaurant": {
         "title": "At the restaurant", "icon": "restaurant", "lesson": "A2.1 · Lesson 04",
@@ -69,27 +70,27 @@ def section_text(text, heading):
 
 def scenario_context(scenario):
     path = VAULT / scenario["source"]
-    if not path.is_file():
+    if PUBLIC_MODE or not path.is_file():
         return ("Built-in fictional speaking practice. No private class notes are configured for this scenario. "
                 "Use the role and mission for general practice; do not claim course, teacher, homework or exam evidence.")
     text = path.read_text(encoding="utf-8")
     return "\n\n".join(section_text(text, heading) for heading in scenario["sections"])[:10000]
 
 def scenario_source(scenario):
-    if (VAULT / scenario["source"]).is_file():
+    if not PUBLIC_MODE and (VAULT / scenario["source"]).is_file():
         return {"source": scenario["source"], "section": scenario["section"]}
     return {"source": "Built-in fictional practice", "section": scenario["title"]}
 
 def public_scenarios():
     return [{"id": key, **{k: v for k, v in value.items() if k not in {"role", "sections"}},
              **scenario_source(value),
-             **({"lesson": "General speaking practice"} if not (VAULT / value["source"]).is_file() else {})}
+             **({"lesson": "General speaking practice"} if PUBLIC_MODE or not (VAULT / value["source"]).is_file() else {})}
             for key, value in SCENARIOS.items()]
 
 def vocabulary():
     """Reuse existing audio; this is generated study support, not teacher audio."""
     path = VAULT / "A2.1/Tests/A2.1 First Test Vocabulary.md"
-    if not path.exists():
+    if PUBLIC_MODE or not path.exists():
         return [{"id": i, "text": word, "translation": meaning, "group": "Starter words",
                  "source": "Built-in starter vocabulary · synthetic Piper examples"}
                 for i, (word, meaning) in enumerate([
