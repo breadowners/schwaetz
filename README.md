@@ -10,6 +10,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development and language corrections,
 [SECURITY.md](SECURITY.md) for private vulnerability reporting, and
 [BETA_PLAN.md](BETA_PLAN.md) for the proposed rollout to up to 100 invited testers.
 The public beta and its shared model budget are not deployed yet.
+The owner's next step is [BETA_SETUP.md](BETA_SETUP.md): a model comparison using
+a separate OpenRouter key with a non-resetting spending limit of US$1 or less.
 
 ## Quick start
 

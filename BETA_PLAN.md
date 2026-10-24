@@ -60,6 +60,8 @@ raise limits or instantly refill OpenRouter. Start with manual credit top-ups.
 1. Connect the owner's provider key securely and approve the comparison budget.
    Compare explicit model versions on synthetic and consenting learner examples;
    have a fluent Luxembourgish speaker review the language outputs.
+   [BETA_SETUP.md](BETA_SETUP.md) describes the prepared, synthetic-only runner
+   and its required non-resetting provider key limit of US$1 or less.
 2. Implement the invitation, shared-key and accounting controls above. The current
    public mode is still BYOK; it does not implement this proposed experience.
 3. Prepare original, shareable A2 examples. Public mode excludes the private vault,
