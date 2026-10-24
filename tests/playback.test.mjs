@@ -16,6 +16,7 @@ function harness() {
     setBusy(value) { state.busy = value; }, stopAudio() { state.playing = null; },
     microphoneReady: () => true,
     showError: message => errors.push(message),
+    clearError() { errors.length = 0; },
     startRecording() { calls.push('microphone'); },
     api: async (path, options) => { calls.push({path, body: JSON.parse(options.body)}); return {blob: async () => 'wav'}; },
     URL: {createObjectURL: () => 'blob:example'},
@@ -70,4 +71,38 @@ test('sound correction can speak while the independent tutor request is pending'
   assert.equal(h.audios.length, 1);
   assert.equal(h.calls[0].path, '/api/speak');
   assert.equal(h.state.pendingReply, true);
+});
+
+test('a blocked clip can replay synchronously on a tap and later replies reuse the permitted player', async () => {
+  const h = harness();
+  let permitted = false, attempts = 0;
+  h.context.Audio = class {
+    constructor() { h.audios.push(this); }
+    async play() {
+      attempts++;
+      if (!permitted) { const error = new Error(); error.name = 'NotAllowedError'; throw error; }
+    }
+  };
+  await h.context.playReply('Moien.', false, true);
+  assert.equal(attempts, 1);
+  assert.equal(h.state.playing, null, 'a rejected player must not appear to be speaking');
+  permitted = true;
+  const replay = h.context.playReply('Moien.', false, true);
+  assert.equal(attempts, 2, 'play must be called before leaving the tap handler');
+  await replay;
+  assert.equal(h.errors.length, 0, 'successful manual playback clears the autoplay message');
+  assert.equal(h.calls.filter(c => c.path === '/api/speak').length, 1, 'reuse the ready clip');
+  await h.context.playReply('Merci.', false, true);
+  assert.equal(h.audios.length, 1, 'keep the same element for subsequent automatic replies');
+  assert.equal(attempts, 3);
+});
+
+test('changing voice speed generates a new clip instead of replaying the old speed', async () => {
+  const h = harness();
+  await h.context.playReply('Moien.', false);
+  h.context.$('slow-voice').checked = true;
+  await h.context.playReply('Moien.', false);
+  const requests = h.calls.filter(c => c.path === '/api/speak');
+  assert.deepEqual(requests.map(c => c.body.slow), [false, true]);
+  assert.equal(h.audios.length, 1);
 });

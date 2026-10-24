@@ -1,3 +1,4 @@
+import { createListeningView } from './listening-ui.js?v=15';
 const $ = id => document.getElementById(id);
 const icons = {
   settings: '<path d="m12 3 1.3 2.3 2.6.1 1.3 2.3-1.2 2.3 1.2 2.3-1.3 2.3-2.6.1L12 17l-1.3-2.3-2.6-.1-1.3-2.3L8 10 6.8 7.7l1.3-2.3 2.6-.1L12 3Z"/><circle cx="12" cy="10" r="2.6"/>',
@@ -25,7 +26,8 @@ document.querySelectorAll('[data-icon]').forEach(el => { el.innerHTML = icon(el.
 const state = { scenarios: [], selected: 'restaurant', mode: 'conversation', started: false, messages: [], status: null,
   busy: false, recording: false, recorder: null, stream: null, chunks: [], lastRecording: null,
   recordingURL: null, playing: null, audioURL: null, generation: 0, controller: null, timer: null,
-  audioContext: null, monitor: null, vocabulary: [], vocabIndex: 0, vocabGroup: '', pendingReply: false,
+  audioContext: null, monitor: null, speechAudio: null, speechClip: null,
+  vocabulary: [], vocabIndex: 0, vocabGroup: '', pendingReply: false,
   userGesture: false, playedAssistant: false, soundURLs: [], customTarget: '', warmController: null,
   coach: null, heldReply: null, correctionQueue: [], awaitingTutor: false, coachPractised: false, turnController: null,
   byokKey: '', byokModels: [], byokFreeOnly: true, keyController: null };
@@ -35,14 +37,18 @@ try {
   const saved = JSON.parse(localStorage.getItem('schwatz-settings') || '{}');
   optionIds.forEach(id => { if (typeof saved[id] === 'boolean') $(id).checked = saved[id]; });
   if (typeof saved.model === 'string') savedModel = saved.model;
+  // Move the previous default to the faster free model once. Subsequent explicit
+  // choices, including DeepSeek, are preserved along with local/personal models.
+  if (saved.replySpeedVersion !== 1 && savedModel === 'opencode/deepseek-v4.1-flash-free') savedModel = 'opencode/glm-5.3-flash-free';
   if ([1200, 2000, 3000].includes(saved.pauseMs)) $('pause-duration').value = String(saved.pauseMs);
 } catch { /* Storage may be unavailable; the app still works. */ }
-function saveSettings() { savedModel = $('model-select').value; try { localStorage.setItem('schwatz-settings', JSON.stringify({ ...Object.fromEntries(optionIds.map(id => [id, $(id).checked])), model: savedModel, pauseMs: Number($('pause-duration').value) || 1200 })); } catch {} }
+function saveSettings() { savedModel = $('model-select').value; try { localStorage.setItem('schwatz-settings', JSON.stringify({ ...Object.fromEntries(optionIds.map(id => [id, $(id).checked])), model: savedModel, replySpeedVersion: 1, pauseMs: Number($('pause-duration').value) || 1200 })); } catch {} }
 optionIds.forEach(id => $(id).addEventListener('change', saveSettings));
 $('pause-duration').addEventListener('change', saveSettings);
 $('model-select').addEventListener('change', () => { saveSettings(); updateModelInfo(); if (state.started && state.mode !== 'repeat') warmSelectedModel(); });
 
 function updateModelInfo() {
+  if (state.mode === 'listening') { $('connection-text').textContent = 'Listening'; $('runtime-label').textContent = 'INLL · original audio'; return; }
   const selected = $('model-select').value;
   const onlineSelected = (state.status?.online_models || []).includes(selected);
   const online = state.mode !== 'repeat' && onlineSelected;
@@ -73,9 +79,10 @@ function clearError() { $('error-box').hidden = true; }
 function microphoneReady() { return state.mode === 'repeat' || state.coach ? state.status?.pronunciation_ready : state.status?.speech_ready; }
 function setBusy(busy, label = 'Thinking of a reply…', detail = 'Your partner is getting ready.') {
   state.busy = busy;
-  $('mic-label').textContent = busy ? label : state.coach ? 'Record your attempt' : 'Tap to speak';
-  $('mic-detail').textContent = busy ? detail : state.coach ? 'Say the sentence above.' : state.status?.public_mode ? 'Audio is processed on the app server.' : 'Audio is processed on your Mac.';
-  if (!state.recording) $('mic-button').setAttribute('aria-label', state.coach ? 'Record your attempt' : 'Start recording');
+  $('speaking-dock').classList.toggle('correction-mode', Boolean(state.coach));
+  $('mic-label').textContent = busy ? label : state.coach ? 'Record & check · optional' : 'Tap to speak';
+  $('mic-detail').textContent = busy ? detail : state.coach ? 'Repeat the example to get feedback on your attempt.' : state.status?.public_mode ? 'Audio is processed on the app server.' : 'Audio is processed on your Mac.';
+  if (!state.recording) $('mic-button').setAttribute('aria-label', state.coach ? 'Record and check your attempt' : 'Start recording');
   $('mic-button').classList.toggle('busy', busy);
   $('mic-button').disabled = busy || !microphoneReady() || !state.started || (state.coach?.target.length || 0) > 300;
   $('send-typed').disabled = busy || Boolean(state.coach);
@@ -87,7 +94,7 @@ function setBusy(busy, label = 'Thinking of a reply…', detail = 'Your partner 
   $('hint-button').hidden = state.mode !== 'conversation' || Boolean(state.coach);
 }
 async function api(path, options = {}) {
-  if (['/api/turn', '/api/warm'].includes(path) && state.byokKey) {
+  if (['/api/turn', '/api/warm', '/api/listening/translate'].includes(path) && state.byokKey) {
     const selected = JSON.parse(options.body || '{}').model || '';
     if (selected.startsWith('byok/openrouter/')) options = {...options, headers: {...options.headers,
       'X-Provider-Key': state.byokKey, 'X-Free-Only': String(state.byokFreeOnly)}};
@@ -104,7 +111,7 @@ async function loadStatus() {
   try {
     state.status = await (await api('/api/status')).json();
     applyPersonalModels(state.status);
-    const ready = state.mode === 'repeat' ? state.status.pronunciation_ready : state.status.speech_ready && state.status.conversation_ready;
+    const ready = state.mode === 'listening' || (state.mode === 'repeat' ? state.status.pronunciation_ready : state.status.speech_ready && state.status.conversation_ready);
     $('connection').className = `connection ${ready ? 'ready' : (state.mode === 'repeat' ? state.status.pronunciation_error : state.status.speech_error) ? 'error' : ''}`;
     $('connection-text').textContent = ready ? 'Local' : state.status.speech_loading ? 'Loading' : 'Setup needed';
     $('setup-detail').textContent = `${state.status.recognition}. ${state.status.recognition_warning || ''} ${state.status.speech_error || (state.status.speech_ready ? 'Speech ready.' : 'Speech warming up.')} ${state.status.online_models?.length ? 'Online models ready through OpenCode.' : state.status.online_loading ? 'OpenCode starting.' : state.status.online_error || ''} Sound analysis: ${state.status.pronunciation_ready ? 'ZIPA ready.' : state.status.pronunciation_error || 'Warming up.'}`;
@@ -150,6 +157,7 @@ function resetSession() {
   state.coach = null; state.heldReply = null; state.correctionQueue = [];
   $('coach-panel').hidden = true;
   stopAudio(); cancelRecording();
+  state.speechClip = null;
   state.messages = []; state.started = false; state.userGesture = false;
   $('conversation').replaceChildren(); $('conversation').hidden = true; $('welcome').hidden = false;
   $('speaking-dock').hidden = true; $('transcript-check').hidden = true; $('type-panel').hidden = true;
@@ -229,11 +237,20 @@ async function playReply(text, allowNextRecording, correction = false) {
   setBusy(true, correction ? 'Listen to the correction' : 'Speaking…', correction ? 'Then repeat the displayed phrase.' : 'Listen, then take your turn.');
   const controller = new AbortController(); state.controller = controller;
   try {
-    const response = await api('/api/speak', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, slow: correction || $('slow-voice').checked }), signal: controller.signal });
-    const blob = await response.blob();
+    const slow = correction || $('slow-voice').checked;
+    const key = JSON.stringify({ text, slow });
+    let blob = state.speechClip?.key === key ? state.speechClip.blob : null;
+    if (!blob) {
+      const response = await api('/api/speak', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: key, signal: controller.signal });
+      blob = await response.blob();
+    }
     if (generation !== state.generation) return;
-    state.audioURL = URL.createObjectURL(blob); const audio = new Audio(state.audioURL); state.playing = audio;
+    // Keep a blocked clip ready so Replay/Listen calls play() during the tap,
+    // without another network wait. Safari grants playback per media element.
+    state.speechClip = { key, blob };
+    const audio = state.speechAudio ||= new Audio();
+    state.audioURL = URL.createObjectURL(blob); audio.src = state.audioURL; state.playing = audio;
     audio.onended = () => {
       if (generation !== state.generation) return;
       stopAudio(); setBusy(false);
@@ -243,14 +260,17 @@ async function playReply(text, allowNextRecording, correction = false) {
     audio.onerror = () => { if (generation === state.generation) { stopAudio(); setBusy(false); showError(correction ? 'Audio playback failed. Try Listen.' : 'Audio playback failed. Try Replay.'); } };
     await audio.play();
     if (generation === state.generation) {
+      clearError();
       state.playedAssistant = true;
-      $('mic-button').disabled = !microphoneReady() || (state.coach?.target.length || 0) > 300; $('mic-label').textContent = correction ? 'Listen, then repeat' : 'Listening';
-      $('mic-detail').textContent = correction ? 'Tap the microphone to repeat the example.' : 'Tap the microphone to interrupt and reply.';
+      $('coach-continue').disabled = state.recording || (state.awaitingTutor && !state.heldReply);
+      $('mic-button').disabled = !microphoneReady() || (state.coach?.target.length || 0) > 300; $('mic-label').textContent = correction ? 'Record & check · optional' : 'Listening';
+      $('mic-detail').textContent = correction ? 'Tap to interrupt the example and check your attempt.' : 'Tap the microphone to interrupt and reply.';
     }
   } catch (error) {
     if (error.name === 'AbortError' || generation !== state.generation) return;
+    stopAudio();
     setBusy(false);
-    showError(error.name === 'NotAllowedError' ? `Tap ${correction ? 'Listen' : 'Replay'} to hear the example. Your browser paused automatic playback.` : error.message);
+    showError(error.name === 'NotAllowedError' ? `Tap ${correction ? 'Listen' : 'Replay'} to enable audio. Safari or your browser needs a tap before playing sound.` : error.message);
   }
 }
 function correctionsFor(reply, sound) {
@@ -275,7 +295,11 @@ function showCoach(correction) {
   state.coachPractised = false;
   $('coach-kind').textContent = correction.kind; $('coach-target').textContent = correction.target;
   $('coach-explanation').textContent = correction.explanation;
-  $('coach-result').textContent = correction.target.length > 300 ? 'Listen to this version. Use a shorter phrase in Sounds to check a recording.' : '';
+  $('coach-attempt').hidden = true;
+  for (const id of ['coach-heard', 'coach-wording-result', 'coach-result']) $(id).textContent = '';
+  $('coach-practice-note').textContent = correction.target.length > 300
+    ? 'Listen, then continue. Use a shorter phrase in Sounds to check an attempt.'
+    : 'Repeating is optional. Record an attempt below to get feedback.';
   $('coach-continue').textContent = state.awaitingTutor && !state.heldReply ? 'Preparing reply…' : state.correctionQueue.length ? 'Next correction' : 'Continue conversation';
   $('coach-panel').hidden = false; $('type-panel').hidden = true;
   setBusy(false); $('coach-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -298,17 +322,38 @@ async function continueConversation() {
 }
 async function retryCorrection(blob, generation, signal) {
   const coach = state.coach;
-  const data = await analysePronunciation(blob, coach.target, signal);
+  const checkWording = coach.sound === false;
+  const soundTask = analysePronunciation(blob, coach.target, signal).catch(error => {
+    if (error.name === 'AbortError') throw error;
+    return { outcome: 'unavailable', summary: error.message, tips: [] };
+  });
+  const transcriptTask = checkWording
+    ? api('/api/transcribe', { method: 'POST', headers: { 'Content-Type': blob.type || 'audio/webm' }, body: blob, signal })
+      .then(response => response.json()).catch(error => {
+        if (error.name === 'AbortError') throw error;
+        return { error: error.message };
+      })
+    : Promise.resolve(null);
+  const [data, transcript] = await Promise.all([soundTask, transcriptTask]);
   if (generation !== state.generation || coach !== state.coach) return;
   setBusy(false);
+  const normalise = text => text.normalize('NFC').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, '').replace(/\s+/g, ' ').trim();
+  const heard = transcript?.text?.trim();
+  const wordingMatches = Boolean(heard && normalise(heard) === normalise(coach.target));
+  $('coach-heard').textContent = heard ? `Transcript: “${heard}” Speech recognition can mishear.` : '';
+  $('coach-wording-result').textContent = !checkWording ? '' : heard
+    ? wordingMatches ? 'Your transcript matches the corrected sentence.' : 'Your transcript differs from the example. Compare it with the sentence above and try again.'
+    : 'The wording check was unavailable. You can still listen, try again, or continue.';
   $('coach-result').textContent = data.outcome === 'no_clear_difference'
-    ? 'No clear sound mismatch detected. Continue, or practise once more.'
-    : data.summary;
+    ? 'Sound check: No clear sound mismatch detected. This is not a pronunciation grade.'
+    : `Sound check: ${data.summary || 'No reliable result was available. Please try another recording.'}`;
   // A repetition is practice, not a new conversation turn. Keep the held reply.
   const tip = data.tips?.[0];
   if (tip) $('coach-result').textContent += ` ${tip.practice}`;
-  state.coachPractised = data.outcome === 'no_clear_difference';
-  if (data.outcome === 'no_clear_difference' && $('hands-free').checked) { await continueConversation(); return; }
+  $('coach-attempt').hidden = false;
+  $('coach-attempt').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  state.coachPractised = data.outcome === 'no_clear_difference' && (!checkWording || wordingMatches);
+  if (state.coachPractised && $('hands-free').checked) { await continueConversation(); return; }
   if (data.outcome === 'possible_difference' && $('spoken-corrections').checked) await playReply(coach.target, false, true);
 }
 async function submitTurn(text, retry = false, recording = null) {
@@ -361,7 +406,7 @@ async function submitTurn(text, retry = false, recording = null) {
       state.correctionQueue = correctionsFor(data, null);
       $('coach-continue').textContent = state.correctionQueue.length ? 'Next correction' : 'Continue conversation';
       // A late text reply must not interrupt a recording or a spoken example.
-      $('coach-continue').disabled = state.busy || state.recording;
+      $('coach-continue').disabled = (state.busy && !state.playing) || state.recording;
       $('model-select').disabled = state.busy || state.recording;
       if (state.coachPractised && $('hands-free').checked && !state.busy && !state.recording) await continueConversation();
       return;
@@ -465,7 +510,7 @@ function monitorSilence(stream, started) {
   } catch { /* The stop button and one-minute cap remain available. */ }
 }
 async function recognise(blob, generation) {
-  setBusy(true, state.mode === 'repeat' || state.coach ? 'Checking sounds…' : 'Transcribing…', state.status?.public_mode ? 'Your recording is analysed on the app server.' : 'Your recording is analysed on your Mac.');
+  setBusy(true, state.coach ? 'Checking your attempt…' : state.mode === 'repeat' ? 'Checking sounds…' : 'Transcribing…', state.status?.public_mode ? 'Your recording is analysed on the app server.' : 'Your recording is analysed on your Mac.');
   const controller = new AbortController(); state.controller = controller;
   try {
     if (state.coach) { await retryCorrection(blob, generation, controller.signal); return; }
@@ -572,16 +617,24 @@ async function showRepeatResult(data) {
   $('repeat-result').replaceChildren(soundFeedbackElement(data, state.recordingURL));
   if (data.outcome === 'possible_difference' && data.tips?.length && $('spoken-corrections').checked) await playReply(repeatTarget(), false, true);
 }
+const listeningView = createListeningView({ api, onError: showError, getModel: () => $('model-select').value || state.status?.model });
 function setMode(mode) {
+  listeningView.close();
   resetSession(); state.mode = mode;
   document.querySelectorAll('.mode-tab').forEach(tab => { tab.classList.toggle('active', tab.dataset.mode === mode); tab.setAttribute('aria-current', tab.dataset.mode === mode ? 'page' : 'false'); });
   $('repeat-panel').hidden = true; $('source-button').hidden = false; $('type-button').hidden = false;
-  $('conversation-options').hidden = mode === 'repeat';
+  $('listening-panel').hidden = mode !== 'listening';
+  $('conversation-options').hidden = mode === 'repeat' || mode === 'listening';
   $('scenario-title').textContent = selectedScenario().title;
-  $('practice-label').textContent = mode === 'review' ? 'Review' : 'Speaking';
-  $('hint-button').hidden = mode === 'review';
+  $('practice-label').textContent = 'Speaking';
+  $('hint-button').hidden = false;
   $('mission').textContent = mode === 'review' ? `${selectedScenario().mission} Attempt each reply before receiving feedback. This is generated practice, not an official test.` : selectedScenario().mission;
   if (mode === 'repeat') openRepeat();
+  if (mode === 'listening') {
+    $('welcome').hidden = true; $('practice-label').textContent = 'Listening'; $('scenario-title').textContent = 'Listen & understand';
+    listeningView.open();
+  }
+  history.replaceState(null, '', mode === 'listening' ? '#listening' : location.pathname + location.search);
   loadStatus();
 }
 $('start-button').addEventListener('click', startSession);
@@ -681,7 +734,7 @@ async function init() {
     state.scenarios = scenarios; state.vocabulary = words; renderScenarios(); $('mission').textContent = selectedScenario().mission;
     const groups = [...new Set(words.map(w => w.group))]; state.vocabGroup = groups[0] || '';
     $('vocab-group').replaceChildren(...groups.map(group => { const option = document.createElement('option'); option.value = group; option.textContent = group; return option; }));
-    setMode('conversation');
+    setMode(location.hash === '#listening' ? 'listening' : 'conversation');
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
   } catch (error) { showError(error.message); }
 }

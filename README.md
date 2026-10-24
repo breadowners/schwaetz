@@ -1,9 +1,15 @@
-# Schwätz — personal Luxembourgish speaking companion
+# Schwätz — Luxembourgish speaking and listening practice
 
 A local, phone-friendly web app focused on pronunciation practice and spoken
 conversations. Speech recognition, experimental sound checks and spoken examples
 run on your computer. Conversation replies can use Ollama or supported free
 OpenCode models. This repository contains the application source only.
+
+The project lives at [breadowners/schwatz](https://github.com/breadowners/schwatz).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development and language corrections,
+[SECURITY.md](SECURITY.md) for private vulnerability reporting, and
+[BETA_PLAN.md](BETA_PLAN.md) for the proposed rollout to up to 100 invited testers.
+The public beta and its shared model budget are not deployed yet.
 
 ## Quick start
 
@@ -13,8 +19,8 @@ an installed Ollama conversation model or [OpenCode v2](https://opencode.ai/v2/d
 for the optional online conversation route.
 
 ```sh
-git clone https://github.com/mengxihe/schwaetz.git
-cd schwaetz
+git clone https://github.com/breadowners/schwatz.git
+cd schwatz
 python3.12 -m venv .venv
 .venv/bin/python -m pip install -r requirements-pronunciation.txt
 .venv/bin/python download_models.py
@@ -31,8 +37,9 @@ Sounds practice works without a conversation model.
 
 A fresh clone provides fictional speaking situations and five starter words.
 It does not need the author's course vault. To use your own compatible Obsidian
-vault, start with `SPEAK_VAULT=/path/to/your/notes npm run dev`. A sibling `notes/`
-folder is also detected for the original local workspace. Only the selected
+vault, start with `SPEAK_VAULT=/path/to/your/notes npm run dev`. A sibling clone at
+`../luxembourgish-notes/notes` is detected automatically, with the original
+`../notes` location as a fallback. `SPEAK_VAULT` always takes priority. Only the selected
 sections listed in `content.py` are read; the app does not modify the vault.
 The original A2.1 note layout is optional. Source labels distinguish built-in
 practice from actual configured notes. Do not commit your notes or recordings.
@@ -47,24 +54,31 @@ model weights or make phonetic feedback a validated pronunciation assessment.
 ## Start on this Mac
 
 ```sh
-cd schwaetz
+cd schwatz
 npm run dev
 ```
 
 Open **http://localhost:8765**. In **Settings → Conversation model**, choose
 **GLM 5.3 Flash · Free · OpenCode** or **DeepSeek V4.1 Flash · Free · OpenCode**
 for online replies, or `qwen3.8:27b`
-for local replies. DeepSeek is the default when available; an existing browser
-model preference is preserved. Click **Start conversation**, listen, then speak your reply. When the model proposes
+for local replies. GLM is the default for quicker replies. On the first refresh
+after this update, the previous DeepSeek default moves to GLM; subsequent explicit
+model choices and existing local/personal-key choices are preserved. Click **Start conversation**, listen, then speak your reply. When the model proposes
 a corrected sentence or the separate audio model finds a possible sound mismatch,
 the app pauses the conversation and **reads the correction aloud slowly**.
-Tap the single microphone labelled **Record your attempt** to check a new recording against that
-displayed phrase. **Continue conversation** resumes the held reply; if there is
+The large **Continue conversation** button resumes the held reply. Repeating is
+optional: use the smaller **Record & check** microphone to get visible feedback
+on a new attempt. For wording corrections, this shows the recognised sentence,
+whether its transcript matches the example, and a separate experimental sound
+check. A different transcript is a cue to compare, not a pronunciation or grammar
+grade. If there is
 both a sound tip and a wording correction, it first offers the next correction.
 Repetitions do not become new conversation-model turns or discard your conversation.
 **Listen** replays the example. Automatic correction audio has its own Settings
 switch, separate from ordinary reply playback. Browser autoplay restrictions may
-require pressing Listen once. Sound checks remain experimental; examples use Piper.
+require pressing Replay or Listen once. The app keeps the last generated clip
+ready to play directly on that tap and reuses the same speech player for later
+replies. Sound checks remain experimental; examples use Piper.
 
 The **Sounds** tab works without Qwen/Ollama: listen to the example, say the displayed **Say** phrase into
 the microphone, and pause or tap again. Sound feedback compares the recording
@@ -81,7 +95,7 @@ recognised text as the assumed target. If the recognition is wrong, turn on
 **Check my transcript first** and fix the target before sending. Typed replies
 get wording feedback only, with spoken sentence corrections. Allow microphone access when your browser asks.
 
-The interface uses a single column with Speak, Sounds and Review tabs. Topic
+The interface uses a single column with Speak, Sounds and Listening tabs. Topic
 selection is one dropdown; settings, lesson sources, IPA evidence and file input
 are tucked away. There is no decorative hero, sidebar or motivational copy.
 
@@ -91,12 +105,52 @@ before sending, automatic end-of-turn detection, and continued conversation
 the page is hidden and is capped at one minute per turn. You can interrupt a
 spoken reply by tapping the microphone.
 
-Five situations use your restaurant, reservation, transport, and neighbourhood
-notes, plus open everyday conversation. Lesson review waits for an attempt
-before feedback. With the original private vault, Sounds uses its 113 vocabulary entries; a fresh clone uses five starter words. short phrases use
-local Piper audio, longer entries reuse the existing synthetic vocabulary clips. Conversations are held
+Eight situations cover restaurant, reservation, transport, neighbourhood,
+housing and dream homes, household preferences, a cleaning rota, and open
+everyday conversation. Housing uses Lesson 07's checked articles and grammar;
+housework uses Lesson 08's vocabulary, preferences and separable verbs.
+The correction flow lets you continue immediately or practise again with feedback. With the private vault,
+Sounds reads the original 113 vocabulary entries and selected tables from
+Lessons 07–08, including housing nouns, descriptions, chores and preferences.
+New lesson words use local Piper examples; existing synthetic vocabulary clips
+are reused for longer older entries. Pulling updates in the notes repository
+updates these selected sections and tables without copying notes into the app.
+A fresh clone without a vault uses five starter words. Conversations are held
 in page memory; **Save conversation** explicitly downloads a Markdown copy.
 Only preferences are saved automatically in this browser.
+
+## Listening practice
+
+Open **Listening** (or `/#listening`) for eight official INLL Poterkëscht episodes,
+selected from the publisher's public RSS feed. Topics cover restaurant orders,
+restaurant problems, reservations, banking, shops and opening hours, directions,
+train tickets, housing, housework and introductions. The publisher's level and
+publication date are shown; these are original recordings, not synthetic speech.
+
+Use the normal player, 0.65×/0.8× playback and **Back 10 seconds**. Generated
+comprehension questions are shown one at a time. Choose an answer before checking;
+answer keys stay on the server until an attempt. Their evidence is the published
+transcript, not an independently checked listening assessment or official exam.
+
+**Transcript & English** reads the existing translated restaurant/bank and
+directions/train transcripts from your private Mock Test 02 note, when configured.
+These 144 aligned lines exclude test questions and answers. English is hidden by
+default and labelled study support, not an official INLL translation. Other full
+transcripts stay linked at the publisher. **Translate a passage** translates up to
+1,500 characters you paste using your selected model; it does not send the audio
+or your vault. The official A2 (2017) textbook companion pages are linked separately.
+
+For a fresh machine, download the selected public originals with:
+
+```sh
+.venv/bin/python download_listening.py
+```
+
+Downloads are unchanged in `.cache/listening/`, outside Git; the catalog records
+their publisher URLs and SHA-256 hashes. Without downloads, official source links
+still work. Listening playback, transcripts and quiz feedback need no conversation
+model. Generated passage translation uses the selected model and its normal
+privacy/availability rules. Public mode ignores private translated notes.
 
 The selected conversation model is remembered in Settings. When you start a
 conversation, the app begins loading it while the opening plays, and keeps it
@@ -168,8 +222,9 @@ separate, authenticated OpenCode runtime on a random localhost port, in an empty
 temporary directory. It does not use your personal OpenCode configuration or API
 keys. It calls the documented transient session `/generate` API, which returns
 text without running tools or appending the conversation to session history.
-Temporary empty session metadata is removed after each turn; the runtime and its
-temporary storage are removed on app shutdown.
+One empty context per model is reused to avoid creating and deleting a session
+for every reply. No conversation messages are appended. The empty contexts,
+runtime and temporary storage are removed on app shutdown.
 
 The exact models are `opencode/glm-5.3-flash-free` and
 `opencode/deepseek-v4.1-flash-free`. OpenCode's [model list](https://opencode.ai/v2/docs/console/models/)
@@ -181,10 +236,11 @@ allowed, the selected model's catalog price is checked before each turn, and the
 fallback. Quota, availability, and the promotion can change; a failure leaves the
 attempt available for retry or lets you choose Qwen in Settings.
 
-GLM integration check on 16 October: a synthetic tutor turn returned valid JSON
-in 21.65 seconds, but other requests returned upstream 503 endpoint errors.
-Availability is intermittent; adding GLM does not establish a speed or language
-accuracy improvement. DeepSeek remains the default and saved choices are preserved.
+The reply path uses shorter instructions, removes link URLs and Markdown emphasis
+from model excerpts, and requests brief spoken replies. The full selected source
+remains available in Lesson source. GLM is the faster default based on local
+timing samples; both free models remain selectable. Upstream speed and availability
+vary, and shorter output does not establish better Luxembourgish accuracy.
 
 Online mode sends your transcript, recent conversation, and the selected curated
 lesson excerpt to OpenCode. It does not upload recordings, phonetic evidence,
@@ -356,7 +412,7 @@ for a private HTTPS address. Plain Wi-Fi HTTP cannot use the phone microphone.
 
 1. Install [Tailscale](https://tailscale.com/download) on the Mac and phone. Sign
    in to the same personal account and connect both devices.
-2. Stop the existing app server, then run `npm run phone` in `speaking-app/`.
+2. Stop the existing app server, then run `npm run phone` in `schwatz/`.
    The launcher detects this Mac's Tailscale hostname, permits that exact host,
    and keeps Uvicorn bound to localhost. It prints your phone address.
 3. In another terminal run `tailscale serve http://127.0.0.1:8765`. Follow its

@@ -8,8 +8,8 @@
   <title>Schwätz · Luxembourgish</title>
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="stylesheet" href="/style.css?v=11">
-  <script type="module" src="/app.js?v=11"></script>
+  <link rel="stylesheet" href="/style.css?v=15">
+  <script type="module" src="/app.js?v=15"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -21,7 +21,7 @@
       <nav class="mode-tabs" aria-label="Practice mode">
         <button class="mode-tab active" data-mode="conversation">Speak</button>
         <button class="mode-tab" data-mode="repeat">Sounds</button>
-        <button class="mode-tab" data-mode="review">Review</button>
+        <button class="mode-tab" data-mode="listening">Listening</button>
       </nav>
       <div class="workspace">
         <div id="conversation-options" class="conversation-options">
@@ -32,6 +32,21 @@
           <div class="panel-top"><div><span id="practice-label" class="field-label">Speaking</span><h1 id="scenario-title">At the restaurant</h1></div><button id="restart-button" class="text-button" aria-label="Start a new conversation">Reset</button></div>
           <div id="welcome" class="welcome"><p id="mission" class="mission"></p><button id="start-button" class="primary-button">Start conversation</button><p id="welcome-footnote" class="welcome-footnote">Listen, reply, then practise any correction.</p></div>
           <div id="conversation" class="conversation" aria-live="polite" aria-relevant="additions" hidden></div>
+          <section id="listening-panel" class="listening-panel" aria-label="Listening practice" hidden>
+            <p class="listening-intro">Real conversations from INLL’s Poterkëscht. Listen without reading first, replay, then try a question.</p>
+            <div class="listening-selectors"><div><label class="field-label" for="listening-topic">Topic</label><select id="listening-topic"></select></div><div><label class="field-label" for="listening-episode">Episode</label><select id="listening-episode"></select></div></div>
+            <p id="listening-status" role="status">Loading official episodes…</p>
+            <article id="listening-content" hidden>
+              <span id="listening-meta" class="field-label"></span><h2 id="listening-title"></h2><p id="listening-guide"></p>
+              <audio id="listening-audio" controls preload="metadata" aria-label="Official podcast audio"></audio>
+              <div class="listening-controls"><button id="listening-rewind" class="secondary-button">Back 10 seconds</button><label for="listening-speed">Speed <select id="listening-speed"><option value="0.65">0.65×</option><option value="0.8">0.8×</option><option value="1" selected>1×</option></select></label></div>
+              <p class="listening-links"><a id="listening-source" target="_blank" rel="noreferrer">Official episode &amp; transcript</a><a id="listening-download" download>Download original audio</a></p>
+              <section id="listening-question" class="listening-question" aria-label="Comprehension practice"><span id="listening-question-position" class="field-label"></span><fieldset id="listening-choices"><legend id="listening-question-text"></legend><div id="listening-options"></div></fieldset><div class="listening-question-actions"><button id="listening-check" class="primary-button" disabled>Check answer</button><button id="listening-next" class="secondary-button" hidden>Next question</button></div><p id="listening-feedback" role="status"></p><p id="listening-score" class="field-label"></p></section>
+              <details id="listening-transcript"><summary>Transcript &amp; English</summary><p id="listening-transcript-note"></p><a id="listening-transcript-link" target="_blank" rel="noreferrer">Read the full official transcript</a><label id="listening-english-label" class="listening-english"><input id="listening-english" type="checkbox">Show English study translations</label><div id="listening-transcript-lines"></div></details>
+              <details id="listening-translation"><summary>Translate a passage into English</summary><p>Paste a complete sentence or a few lines from the official transcript for context. Your selected conversation model translates it. It can misread Luxembourgish words; compare with the original. This is study help, not an official translation.</p><label class="field-label" for="listening-passage">Luxembourgish passage · up to 1,500 characters</label><textarea id="listening-passage" rows="4" maxlength="1500" placeholder="Paste the part you want to understand…"></textarea><button id="listening-translate" class="secondary-button">Translate into English</button><p id="listening-translation-result" role="status"></p></details>
+            </article>
+            <details class="listening-books"><summary>Official textbook audio &amp; resources</summary><p>INLL’s companion pages for <em>Schwätzt Dir Lëtzebuergesch? A2 (2017)</em>, with original audio and supplementary material. These are separate from your course handouts; full books and publisher transcripts stay at their official sources.</p><ul id="listening-books"></ul></details>
+          </section>
           <div id="repeat-panel" class="repeat-panel" hidden>
             <label class="sr-only" for="vocab-group">Vocabulary group</label><select id="vocab-group"></select>
             <div class="repeat-card"><h2 id="repeat-text"></h2><p id="repeat-translation"></p><p class="say-target">Say: <strong id="spoken-target"></strong></p><button id="reference-button" class="secondary-button"><span data-icon="volume"></span>Listen</button></div>
@@ -40,8 +55,10 @@
             <div id="repeat-result" aria-live="polite"></div>
           </div>
           <section id="coach-panel" class="coach-panel" aria-label="Spoken correction" aria-live="polite" hidden>
-            <span id="coach-kind" class="field-label">Correction</span><h2 id="coach-target"></h2><p id="coach-explanation"></p><p id="coach-result" class="coach-result"></p>
-            <div class="coach-actions"><button id="coach-listen" class="secondary-button"><span data-icon="volume"></span>Listen</button><button id="coach-continue" class="text-button">Continue conversation</button></div>
+            <span id="coach-kind" class="field-label">Correction</span><h2 id="coach-target"></h2><p id="coach-explanation"></p>
+            <div class="coach-actions"><button id="coach-continue" class="primary-button">Continue conversation</button><button id="coach-listen" class="secondary-button"><span data-icon="volume"></span>Listen again</button></div>
+            <p id="coach-practice-note" class="coach-practice-note">Repeating is optional. Record an attempt below to get feedback.</p>
+            <section id="coach-attempt" class="coach-attempt" aria-label="Feedback on your attempt" role="status" hidden><h3>Your attempt</h3><p id="coach-heard"></p><p id="coach-wording-result"></p><p id="coach-result" class="coach-result"></p></section>
           </section>
           <div id="transcript-check" class="transcript-check" hidden><label for="heard-text">Check the transcript</label><textarea id="heard-text" rows="2"></textarea><button id="send-transcript" class="primary-button">Send reply</button></div>
           <div id="error-box" class="error-box" role="alert" hidden><span id="error-text"></span><button id="retry-button" class="text-button" hidden>Retry reply</button></div>
@@ -69,7 +86,7 @@
       <p id="key-status" class="dialog-intro" role="status">No personal key connected. OpenCode promotional free access is separate and is not unlocked by pasting a key here.</p>
     </details>
     <label class="setting-row"><span>Read replies aloud</span><input id="auto-speak" type="checkbox" checked></label>
-    <label class="setting-row"><span>Read corrections aloud<small>Pause to listen and repeat before continuing.</small></span><input id="spoken-corrections" type="checkbox" checked></label>
+    <label class="setting-row"><span>Read corrections aloud<small>Listen, then continue or record an optional attempt for feedback.</small></span><input id="spoken-corrections" type="checkbox" checked></label>
     <label class="setting-row"><span>Slower conversation voice</span><input id="slow-voice" type="checkbox"></label>
     <label class="setting-row"><span>Show English translations</span><input id="show-translations" type="checkbox"></label>
     <label class="setting-row"><span>Check transcript before sending</span><input id="check-transcript" type="checkbox"></label>

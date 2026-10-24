@@ -38,7 +38,11 @@ function harness() {
     analysePronunciation(blob, target, signal) {
       calls.push({ task: 'sounds', blob, target, signal }); return sounds.promise;
     },
-    api(path, options) { calls.push({ task: 'reply', path, options }); return tutor.promise; },
+    api(path, options) {
+      calls.push({ task: path === '/api/transcribe' ? 'transcript' : 'reply', path, options });
+      if (path === '/api/transcribe') return Promise.resolve({ json: async () => ({ text: 'Moien.' }) });
+      return tutor.promise;
+    },
     async playReply(text) { played.push(text); state.busy = false; },
   };
   vm.createContext(context); vm.runInContext(coachSource + submitSource, context);
@@ -210,8 +214,14 @@ test('correction repetition checks actual audio against its target without anoth
     return { outcome: 'no_clear_difference', tips: [] };
   };
   await h.context.retryCorrection('retry-recording', h.state.generation, null);
-  assert.equal(h.calls.length, before); assert.equal(h.state.heldReply.reply, data.reply);
+  assert.equal(h.calls.length, before + 1);
+  assert.equal(h.calls.at(-1).path, '/api/transcribe');
+  assert.equal(h.calls.filter(c => c.task === 'reply').length, 1, 'the attempt is not a new conversation turn');
+  assert.equal(h.state.heldReply.reply, data.reply);
   assert.match(h.$('coach-result').textContent, /No clear sound mismatch/);
+  assert.match(h.$('coach-heard').textContent, /Moien/);
+  assert.match(h.$('coach-wording-result').textContent, /matches the corrected sentence/);
+  assert.equal(h.$('coach-attempt').hidden, false);
   assert.equal(h.state.messages.length, 1);
 });
 
@@ -244,4 +254,29 @@ test('uncertain audio gets no invented correction and spoken correction preferen
   h.$('spoken-corrections').checked = false;
   const turn = h.submit('Moien'); h.answer({ ...reply, better_sentence: 'Moien.' }); await turn;
   assert.equal(h.played.length, 0); assert.equal(h.state.coach.target, 'Moien.');
+});
+
+test('a different repeated sentence stays visible for feedback instead of advancing hands-free', async () => {
+  const h = harness(); h.$('hands-free').checked = true;
+  h.state.coach = { target: 'Ech spulle gär.', sound: false };
+  h.state.heldReply = reply; h.state.correctionQueue = [];
+  h.context.analysePronunciation = async () => ({ outcome: 'no_clear_difference', tips: [] });
+  h.context.api = async () => ({ json: async () => ({ text: 'Ech maachen eng Wäsch.' }) });
+  await h.context.retryCorrection({ type: 'audio/mp4' }, h.state.generation, null);
+  assert.match(h.$('coach-wording-result').textContent, /differs from the example/);
+  assert.match(h.$('coach-heard').textContent, /Ech maachen eng Wäsch/);
+  assert.equal(h.state.coachPractised, false);
+  assert.equal(h.state.heldReply, reply);
+  assert.equal(h.$('coach-attempt').hidden, false);
+});
+
+test('a failed sound check still shows the available wording feedback for the attempt', async () => {
+  const h = harness();
+  h.state.coach = { target: 'Moien.', sound: false };
+  h.context.analysePronunciation = async () => { throw new Error('Sound service unavailable'); };
+  await h.context.retryCorrection({}, h.state.generation, null);
+  assert.match(h.$('coach-wording-result').textContent, /matches the corrected sentence/);
+  assert.match(h.$('coach-result').textContent, /Sound service unavailable/);
+  assert.equal(h.state.coachPractised, false);
+  assert.equal(h.$('coach-attempt').hidden, false);
 });
