@@ -1,0 +1,357 @@
+{
+  "publisher": "INLL · Poterkëscht",
+  "rss_url": "https://anchor.fm/s/f1c8499c/podcast/rss",
+  "checked_on": "2026-10-23",
+  "books": [
+    {
+      "title": "Schwätzt Dir Lëtzebuergesch? A2 (2017) · Chapter 1 audio and resources",
+      "url": "https://sdl.inll.lu/book-a2-2017/kapitel-1/"
+    },
+    {
+      "title": "Schwätzt Dir Lëtzebuergesch? A2 (2017) · Chapter 2 audio and resources",
+      "url": "https://sdl.inll.lu/book-a2-2017/kapitel-2/"
+    }
+  ],
+  "episodes": [
+    {
+      "id": "restaurant-bank",
+      "title": "At the restaurant and bank",
+      "publisher_title": "Dialog am Restaurant an op der Bank (A2)",
+      "topics": [
+        "Restaurant",
+        "Banking"
+      ],
+      "level": "A2",
+      "guide": "Follow the restaurant order, then listen for the choices made at the bank. Listen for final decisions rather than the first suggestion.",
+      "note_heading": "Audio A — Restaurant a Bank (4:02)",
+      "local_audio": "A2.1/Materials/Poterkescht - Restaurant an Bank - 2024-02-22.m4a",
+      "questions": [
+        {
+          "prompt": "What does the vegetarian customer choose?",
+          "options": [
+            "Steak",
+            "Pizza",
+            "Spaghetti"
+          ],
+          "answer": 1,
+          "explanation": "In the restaurant scene, he rules out meat and chooses pizza."
+        },
+        {
+          "prompt": "Do they order a small or a large bottle of water?",
+          "options": [
+            "Small",
+            "Large",
+            "No water"
+          ],
+          "answer": 1,
+          "explanation": "They choose a large bottle to share."
+        },
+        {
+          "prompt": "Does the bank customer want a credit card immediately?",
+          "options": [
+            "Yes",
+            "No",
+            "It is not mentioned"
+          ],
+          "answer": 1,
+          "explanation": "In the bank scene, he declines a credit card for now."
+        }
+      ],
+      "audio_file": "restaurant-bank.m4a",
+      "audio_url": "https://anchor.fm/s/f1c8499c/podcast/play/83041768/https%3A%2F%2Fd3ctxlq1ktw2nl.cloudfront.net%2Fstaging%2F2024-1-22%2F368379336-44100-2-f94cbe72da36a.m4a",
+      "publisher_url": "https://podcasters.spotify.com/pod/show/poterkescht/episodes/Dialog-am-Restaurant-an-op-der-Bank-A2-e2g4o18",
+      "transcript_url": "https://podcasters.spotify.com/pod/show/poterkescht/episodes/Dialog-am-Restaurant-an-op-der-Bank-A2-e2g4o18",
+      "published": "2024-02-22",
+      "duration": "00:04:01",
+      "audio_sha256": "fa8206ab8d477a82dcbdad2e4690fd89fd3355c6809366f4780152f4999adf08"
+    },
+    {
+      "id": "directions-train",
+      "title": "Directions and train tickets",
+      "publisher_title": "Weebeschreiwung Gare & Am Guichet (A2)",
+      "topics": [
+        "Directions",
+        "Transport"
+      ],
+      "level": "A2",
+      "guide": "Listen for an alternative route to the station, then a destination, fare and travel class. The dialogue's routes and prices are listening practice, not current travel information.",
+      "note_heading": "Audio B — De Wee an en Zuchbilljee (4:29)",
+      "local_audio": "A2.1/Materials/Poterkescht - Gare an Guichet - 2026-10-06.mp3",
+      "questions": [
+        {
+          "prompt": "How long is the suggested walk to the church?",
+          "options": [
+            "5 minutes",
+            "10 minutes",
+            "15 minutes"
+          ],
+          "answer": 0,
+          "explanation": "In the directions scene, walking to the church takes five minutes. Other times describe different parts of the journey."
+        },
+        {
+          "prompt": "Where does the customer want to travel by train?",
+          "options": [
+            "Paris",
+            "Amsterdam",
+            "Brussels"
+          ],
+          "answer": 1,
+          "explanation": "At the ticket counter, the customer asks to travel to Amsterdam."
+        },
+        {
+          "prompt": "Which travel class does the customer select?",
+          "options": [
+            "First class",
+            "Second class",
+            "No class is chosen"
+          ],
+          "answer": 1,
+          "explanation": "The customer chooses second class."
+        }
+      ],
+      "audio_file": "directions-train.mp3",
+      "audio_url": "https://anchor.fm/s/f1c8499c/podcast/play/126415318/https%3A%2F%2Fd3ctxlq1ktw2nl.cloudfront.net%2Fstaging%2F2026-8-28%2F105c47f7-99d1-2ea0-715a-08ea7a057800.mp3",
+      "publisher_url": "https://podcasters.spotify.com/pod/show/poterkescht/episodes/Weebeschreiwung-Gare--Am-Guichet-A2-e3pgd0m",
+      "transcript_url": "https://podcasters.spotify.com/pod/show/poterkescht/episodes/Weebeschreiwung-Gare--Am-Guichet-A2-e3pgd0m",
+      "published": "2026-10-06",
+      "duration": "00:04:29",
+      "audio_sha256": "b68a4bfed42ec7ed5ccf6b7fda0070ae9937f021365a32c706c7edb7e0895a8c"
+    },
+    {
+      "id": "opening-hours",
+      "title": "Shops and opening hours",
+      "publisher_title": "Ëffnungszäiten am Quartier (A2)",
+      "topics": [
+        "Shops & neighbourhood"
+      ],
+      "level": "A2",
+      "guide": "Keep track of which person describes each place. Listen for weekday and weekend differences, especially half-hours and early closing.",
+      "questions": [
+        {
+          "prompt": "At what time does Sophie's bakery close on Saturday?",
+          "options": [
+            "13:00",
+            "15:00",
+            "18:00"
+          ],
+          "answer": 0,
+          "explanation": "Sophie says her bakery closes at one in the afternoon on Saturday."
+        },
+        {
+          "prompt": "What are Marc's post-office hours on Saturday morning?",
+          "options": [
+            "08:00–12:00",
+            "09:00–12:00",
+            "It is closed"
+          ],
+          "answer": 1,
+          "explanation": "Marc's post office opens from nine until noon on Saturday."
+        }
+      ],
+      "audio_file": "opening-hours.mp3",
+      "audio_url": "https://anchor.fm/s/f1c8499c/podcast/play/126685179/https%3A%2F%2Fd3ctxlq1ktw2nl.cloudfront.net%2Fstaging%2F2026-9-2%2F28bf69a9-dd75-d1ec-0be1-3a42e19850a0.mp3",
+      "publisher_url": "https://podcasters.spotify.com/pod/show/poterkescht/episodes/ffnungsziten-am-Quartier-A2-e3pokhr",
+      "transcript_url": "https://podcasters.spotify.com/pod/show/poterkescht/episodes/ffnungsziten-am-Quartier-A2-e3pokhr",
+      "published": "2026-10-13",
+      "duration": "00:05:14",
+      "audio_sha256": "c745df52fe221989f7266d637fb31fd2f7df52fa4a3a57eecd9005c2782769ea"
+    },
+    {
+      "id": "housing",
+      "title": "Describing a home",
+      "publisher_title": "Eng Wunneng beschreiwen (A2)",
+      "topics": [
+        "Housing"
+      ],
+      "level": "A2",
+      "guide": "There are two different homes. Separate the advantages and disadvantages in the voice message from the furnishings described in the second conversation.",
+      "questions": [
+        {
+          "prompt": "In the first part, how many bedrooms does the apartment have?",
+          "options": [
+            "One",
+            "Two",
+            "Three"
+          ],
+          "answer": 1,
+          "explanation": "The first apartment has two bedrooms, as well as an office."
+        },
+        {
+          "prompt": "In the second part, how large is the apartment?",
+          "options": [
+            "40 m²",
+            "60 m²",
+            "80 m²"
+          ],
+          "answer": 1,
+          "explanation": "The speaker in the second conversation describes a 60-square-metre apartment."
+        }
+      ],
+      "audio_file": "housing.m4a",
+      "audio_url": "https://anchor.fm/s/f1c8499c/podcast/play/87151625/https%3A%2F%2Fd3ctxlq1ktw2nl.cloudfront.net%2Fstaging%2F2024-4-24%2F378612096-44100-2-4c448963d0544.m4a",
+      "publisher_url": "https://podcasters.spotify.com/pod/show/poterkescht/episodes/Eng-Wunneng-beschreiwen-A2-e2k25i9",
+      "transcript_url": "https://podcasters.spotify.com/pod/show/poterkescht/episodes/Eng-Wunneng-beschreiwen-A2-e2k25i9",
+      "published": "2024-06-04",
+      "duration": "00:03:39",
+      "audio_sha256": "f71a61740e75cc47b3e0670e39fa4e5a8cd42d7a637abd10f26a587b4948e4d0"
+    },
+    {
+      "id": "chores",
+      "title": "Household chores and a shared flat",
+      "publisher_title": "De Stot maachen (A2)",
+      "topics": [
+        "Household chores",
+        "Cleaning rota"
+      ],
+      "level": "A2",
+      "guide": "Compare Lisa's routine with Max's shared household. Listen for who lives alone, shared versus individual duties, and the appliances each home has.",
+      "questions": [
+        {
+          "prompt": "Does Max's shared flat have a dishwasher?",
+          "options": [
+            "Yes",
+            "No",
+            "The dishwasher is broken"
+          ],
+          "answer": 1,
+          "explanation": "Max explains that the flat has no dishwasher, so the residents share the washing-up."
+        },
+        {
+          "prompt": "What is Max responsible for this week?",
+          "options": [
+            "Shopping",
+            "Cleaning the bathroom",
+            "The bins and recycling"
+          ],
+          "answer": 2,
+          "explanation": "His duty this week is emptying the bin and handling recycling. The duties rotate."
+        }
+      ],
+      "audio_file": "chores.m4a",
+      "audio_url": "https://anchor.fm/s/f1c8499c/podcast/play/85582161/https%3A%2F%2Fd3ctxlq1ktw2nl.cloudfront.net%2Fstaging%2F2024-3-18%2F374734912-44100-2-f419481c6ffb5.m4a",
+      "publisher_url": "https://podcasters.spotify.com/pod/show/poterkescht/episodes/De-Stot-maachen-A2-e2ii8sh",
+      "transcript_url": "https://podcasters.spotify.com/pod/show/poterkescht/episodes/De-Stot-maachen-A2-e2ii8sh",
+      "published": "2024-04-23",
+      "duration": "00:03:39",
+      "audio_sha256": "d6863dd099e76fed8b09f907bc3fec16626d50b9dec3b48df24c517226ed408b"
+    },
+    {
+      "id": "reservation",
+      "title": "A reservation and a catering order",
+      "publisher_title": "Reservatioun am Restaurant a beim Traiteur bestellen (A2)",
+      "topics": [
+        "Reservations",
+        "Restaurant"
+      ],
+      "level": "A2",
+      "guide": "The first call reserves a restaurant table. The second orders catering for a retirement celebration. Keep the two group sizes and arrangements separate.",
+      "questions": [
+        {
+          "prompt": "For how many people is the restaurant table reserved?",
+          "options": [
+            "Two",
+            "Four",
+            "Fifty"
+          ],
+          "answer": 1,
+          "explanation": "The restaurant reservation is for four people; fifty belongs to the later catering call."
+        },
+        {
+          "prompt": "Where does the restaurant customer prefer to sit?",
+          "options": [
+            "On the terrace",
+            "Inside, near a window",
+            "At the bar"
+          ],
+          "answer": 1,
+          "explanation": "The customer requests an indoor table by a window."
+        }
+      ],
+      "audio_file": "reservation.mp3",
+      "audio_url": "https://anchor.fm/s/f1c8499c/podcast/play/94008977/https%3A%2F%2Fd3ctxlq1ktw2nl.cloudfront.net%2Fstaging%2F2024-10-5%2Fbd75c3c9-a141-f7d1-8d21-d1d0631d614e.mp3",
+      "publisher_url": "https://podcasters.spotify.com/pod/show/poterkescht/episodes/Reservatioun-am-Restaurant-a-beim-Traiteur-bestellen-A2-e2qje6h",
+      "transcript_url": "https://podcasters.spotify.com/pod/show/poterkescht/episodes/Reservatioun-am-Restaurant-a-beim-Traiteur-bestellen-A2-e2qje6h",
+      "published": "2024-11-12",
+      "duration": "00:05:14",
+      "audio_sha256": "29454ecf5dc526ab727483dc702c6238ef6814d92996d7d4dda8c90a6cc26185"
+    },
+    {
+      "id": "introductions",
+      "title": "Getting to know someone",
+      "publisher_title": "Widderhuelung A1: E Kenneléiergespréich",
+      "topics": [
+        "Everyday conversation"
+      ],
+      "level": "A1 revision",
+      "guide": "Start here for an easier listening session. Follow two people's introductions and distinguish their names, countries, work and free-time activities.",
+      "questions": [
+        {
+          "prompt": "Where is Fabio from?",
+          "options": [
+            "Turin, Italy",
+            "Beirut, Lebanon",
+            "Madrid, Spain"
+          ],
+          "answer": 0,
+          "explanation": "Fabio introduces himself as Italian and says he comes from Turin."
+        },
+        {
+          "prompt": "How often does Raïda go swimming?",
+          "options": [
+            "Every day",
+            "Twice a week",
+            "Twice a month"
+          ],
+          "answer": 1,
+          "explanation": "She says she goes swimming twice a week."
+        }
+      ],
+      "audio_file": "introductions.mp3",
+      "audio_url": "https://anchor.fm/s/f1c8499c/podcast/play/115023260/https%3A%2F%2Fd3ctxlq1ktw2nl.cloudfront.net%2Fstaging%2F2026-1-4%2F36a413d8-3d27-3cfc-f780-fbafc86fb10f.mp3",
+      "publisher_url": "https://podcasters.spotify.com/pod/show/poterkescht/episodes/Widderhuelung-A1-E-Kenneliergesprich-e3eknus",
+      "transcript_url": "https://podcasters.spotify.com/pod/show/poterkescht/episodes/Widderhuelung-A1-E-Kenneliergesprich-e3eknus",
+      "published": "2026-02-24",
+      "duration": "00:04:57",
+      "audio_sha256": "29e391472729e56f50bf912a2a19375f74102006a0788be42898c70237903c4a"
+    },
+    {
+      "id": "restaurant-problems",
+      "title": "Fixing an order and a bill",
+      "publisher_title": "Zwee Problemer am Restaurant (A2)",
+      "topics": [
+        "Restaurant"
+      ],
+      "level": "A2",
+      "guide": "Listen for the difference between what was ordered and what arrived. In the second scene, identify the mistakes on the bill and how they are resolved.",
+      "questions": [
+        {
+          "prompt": "Which soup did the customer originally order?",
+          "options": [
+            "Vegetable soup",
+            "Tomato soup",
+            "Onion soup"
+          ],
+          "answer": 0,
+          "explanation": "The customer ordered vegetable soup but initially receives tomato soup."
+        },
+        {
+          "prompt": "How many salads were ordered in the second scene?",
+          "options": [
+            "One",
+            "Two",
+            "Three"
+          ],
+          "answer": 1,
+          "explanation": "Two salads were ordered, but the original bill lists three."
+        }
+      ],
+      "audio_file": "restaurant-problems.mp3",
+      "audio_url": "https://anchor.fm/s/f1c8499c/podcast/play/126685445/https%3A%2F%2Fd3ctxlq1ktw2nl.cloudfront.net%2Fstaging%2F2026-9-2%2F39db0e99-45c5-4f6c-7063-2bc5653f1047.mp3",
+      "publisher_url": "https://podcasters.spotify.com/pod/show/poterkescht/episodes/Zwee-Problemer-am-Restaurant-A2-e3pokq5",
+      "transcript_url": "https://podcasters.spotify.com/pod/show/poterkescht/episodes/Zwee-Problemer-am-Restaurant-A2-e3pokq5",
+      "published": "2026-10-15",
+      "duration": "00:03:55",
+      "audio_sha256": "d433c78d722b54424cc4736b933ad28c154c9b846404f7c2ecaa9a04cde697a2"
+    }
+  ]
+}

@@ -58,6 +58,49 @@ def test_cross_origin_and_unknown_host_blocked(client):
     assert client.get("/api/status", headers={"Host": "unrelated.example"}).status_code == 400
     assert client.post("/api/speak", headers={"Sec-Fetch-Site": "cross-site"}, json={"text": "Moien"}).status_code == 403
 
+
+def test_new_lesson_audio_matches_the_displayed_practice_target(client, monkeypatch):
+    monkeypatch.setattr(server, "vocabulary", lambda: [
+        {"text": "spullen"}, {"text": "Ech spullen net gär."}])
+    spoken = []
+    monkeypatch.setattr(server.speech, "speak", lambda text, **kwargs: spoken.append(text) or b"audio")
+    for item_id in (0, 1):
+        assert client.get(f"/api/reference-audio/{item_id}").status_code == 200
+    assert spoken == ["Ech soen: spullen.", "Ech spullen net gär."]
+
+
+def test_listening_answers_require_an_attempt_and_audio_supports_seeking(client, tmp_path, monkeypatch):
+    import listening
+    episode = listening.EPISODES["chores"]
+    detail = client.get("/api/listening/chores").json()
+    assert "answer" not in detail["questions"][0]
+    assert client.post("/api/listening/chores/check", json={"question_id":0}).status_code == 422
+    result = client.post("/api/listening/chores/check", json={"question_id":0,"choice":episode["questions"][0]["answer"]}).json()
+    assert result["correct"] and result["explanation"]
+    assert client.post("/api/listening/chores/check", json={"question_id":0,"choice":99}).status_code == 400
+    assert client.get("/api/listening/unknown").status_code == 404
+    target = tmp_path / "episode.mp3"
+    target.write_bytes(b"0123456789")
+    monkeypatch.setattr(listening, "audio_path", lambda episode: target)
+    response = client.get("/api/listening/chores/audio", headers={"Range":"bytes=2-5"})
+    assert response.status_code == 206 and response.content == b"2345"
+
+
+def test_listening_translation_uses_only_selected_text_and_model(client, monkeypatch):
+    calls = []
+    monkeypatch.setattr(server.opencode, "ready", True)
+    async def generate(instructions, messages, schema, model):
+        calls.append((instructions, messages, model))
+        return '{"translation":"I like washing dishes."}'
+    monkeypatch.setattr(server.opencode, "generate", generate)
+    response = client.post("/api/listening/translate", json={"text":"Ech spulle gär.","model":server.OPENCODE_MODEL})
+    assert response.status_code == 200 and response.json()["generated"]
+    assert calls[0][1] == [{"role":"user","content":"Ech spulle gär."}]
+    assert calls[0][2] == server.OPENCODE_MODEL
+    assert client.post("/api/listening/translate", json={"text":"x" * 1501}).status_code == 422
+    monkeypatch.setattr(server, "PUBLIC_MODE", True)
+    assert client.post("/api/listening/translate", json={"text":"Moien"}).status_code == 401
+
 def test_audio_is_bounded_and_not_saved(client, monkeypatch):
     received = []
     monkeypatch.setattr(server.speech, "transcribe", lambda data: received.append(data) or {"text": "Moien", "pronunciation_assessed": False})
@@ -98,6 +141,15 @@ def test_tutor_feedback_has_no_pronunciation_claims_by_design():
     assert "Never give a pronunciation score" in prompt
     assert "hide model answers" in prompt
     assert "NEVER German" in prompt
+
+
+def test_shorter_reply_prompt_keeps_grounding_and_uncertainty_without_link_overhead(monkeypatch):
+    monkeypatch.setattr(server, "scenario_context", lambda scenario:
+        "## Words\n**Ech spulle gär.** [LOD](https://lod.lu/artikel/SPULLEN1)\nUncertain capture; not a teacher quote.")
+    prompt = server.tutor_prompt(SCENARIOS["chores"])
+    assert "Ech spulle gär." in prompt and "Uncertain capture; not a teacher quote." in prompt
+    assert "https://lod.lu" not in prompt and "**" not in prompt
+    assert "at most 20 words" in prompt and 'feedback="" and better_sentence=""' in prompt
 
 def test_public_mode_hides_host_models_and_requires_a_personal_key(client, monkeypatch):
     monkeypatch.setattr(server, "PUBLIC_MODE", True)

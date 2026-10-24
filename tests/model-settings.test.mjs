@@ -8,6 +8,7 @@ const selected = source.slice(source.indexOf('function saveSettings()'), source.
 const status = source.slice(source.indexOf('async function loadStatus()'), source.indexOf('function renderScenarios()'));
 const cloud = 'opencode/deepseek-v4.1-flash-free';
 const glm = 'opencode/glm-5.3-flash-free';
+const preferenceInit = source.slice(source.indexOf('let savedModel ='), source.indexOf('function saveSettings()'));
 
 function harness() {
   let response;
@@ -32,18 +33,32 @@ function harness() {
   }};
 }
 
-test('fresh selection switches to DeepSeek when startup finishes and discloses online text', async () => {
+test('fresh selection follows the faster GLM default when startup finishes and discloses online text', async () => {
   const h = harness();
   h.setStatus(['qwen3.8:27b'], 'qwen3.8:27b');
   await vm.runInContext('loadStatus()', h.context);
-  h.setStatus([cloud, 'qwen3.8:27b'], cloud);
+  h.setStatus([glm, cloud, 'qwen3.8:27b'], glm);
   await vm.runInContext('loadStatus()', h.context);
-  assert.equal(h.$('model-select').value, cloud);
+  assert.equal(h.$('model-select').value, glm);
   assert.equal(h.$('connection-text').textContent, 'Online');
   assert.match(h.$('model-detail').textContent, /transcript and selected lesson excerpt go to OpenCode/);
   h.state.mode = 'repeat';
   vm.runInContext('updateModelInfo()', h.context);
   assert.equal(h.$('connection-text').textContent, 'Local');
+});
+
+test('the old default moves to GLM once while explicit new and personal choices survive', () => {
+  for (const [saved, expected] of [
+    [{model: cloud}, glm],
+    [{model: cloud, replySpeedVersion: 1}, cloud],
+    [{model: 'qwen3:8b'}, 'qwen3:8b'],
+    [{model: 'byok/openrouter/test:free'}, 'byok/openrouter/test:free'],
+  ]) {
+    const context = vm.createContext({optionIds: [], $: () => ({}),
+      localStorage: {getItem: () => JSON.stringify(saved)}});
+    vm.runInContext(preferenceInit, context);
+    assert.equal(vm.runInContext('savedModel', context), expected);
+  }
 });
 
 test('a learner’s local model choice survives status refreshes', async () => {

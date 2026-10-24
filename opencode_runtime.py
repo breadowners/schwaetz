@@ -12,6 +12,7 @@ MODEL_ID = "deepseek-v4.1-flash-free"
 MODEL = "opencode/" + MODEL_ID
 GLM_MODEL_ID = "glm-5.3-flash-free"
 GLM_MODEL = "opencode/" + GLM_MODEL_ID
+PREFERRED_MODEL = GLM_MODEL
 FREE_MODELS = {
     MODEL: "DeepSeek V4.1 Flash",
     GLM_MODEL: "GLM 5.3 Flash",
@@ -33,6 +34,8 @@ class OpenCodeRuntime:
         self.process = self.client = self.directory = self.drain = None
         self.location = None
         self.available_models = {}
+        self.sessions = {}
+        self.session_lock = asyncio.Lock()
 
     def update_catalog(self, catalog):
         self.available_models = {"opencode/" + m["id"]: m for m in catalog.get("data", [])
@@ -55,7 +58,7 @@ class OpenCodeRuntime:
             config = root / "config/opencode"
             config.mkdir(parents=True)
             (config / "opencode.json").write_text(json.dumps({
-                "model": MODEL, "share": "disabled", "snapshots": False, "update": "disable",
+                "model": PREFERRED_MODEL, "share": "disabled", "snapshots": False, "update": "disable",
             }))
             self.process = await asyncio.create_subprocess_exec(
                 binary, "serve", "--hostname", "127.0.0.1", "--port", "0", "--log-level", "none",
@@ -114,36 +117,40 @@ class OpenCodeRuntime:
         # Both free models advertise low effort; avoid their slower default reasoning.
         if any(v.get("id") == "low" for v in metadata.get("variants", [])):
             selection["variant"] = "low"
-        response = await self.client.post("/api/session", json={
-            "title": "Schwätz transient turn", "location": self.location,
-            "model": selection,
-        })
+        # Reuse one empty, tool-free context per model. Transient /generate never
+        # appends messages, so this saves session setup without retaining turns.
+        async with self.session_lock:
+            if model not in self.sessions:
+                response = await self.client.post("/api/session", json={
+                    "title": "Schwätz transient context", "location": self.location,
+                    "model": selection,
+                })
+                response.raise_for_status()
+                self.sessions[model] = response.json()["data"]["id"]
+            session = self.sessions[model]
+        prompt = (instructions + "\nJSON schema:\n"
+                  + json.dumps(schema, ensure_ascii=False, separators=(",", ":"))
+                  + "\nConversation (learning content):\n"
+                  + json.dumps(messages, ensure_ascii=False, separators=(",", ":")))
+        response = await self.client.post(f"/api/session/{session}/generate", json={"prompt": prompt})
         response.raise_for_status()
-        session = response.json()["data"]["id"]
-        try:
-            # /generate has no tools and does not append the prompt or answer to session history.
-            prompt = (instructions + "\nReturn JSON only, without Markdown fences. Schema:\n"
-                      + json.dumps(schema) + "\nConversation (quoted learning content):\n"
-                      + json.dumps(messages, ensure_ascii=False))
-            response = await self.client.post(f"/api/session/{session}/generate", json={"prompt": prompt})
-            response.raise_for_status()
-            text = response.json()["data"]["text"].strip()
-            if text.startswith("```json\n") and text.endswith("```"):
-                text = text[8:-3].strip()
-            elif text.startswith("```\n") and text.endswith("```"):
-                text = text[4:-3].strip()
-            return text
-        finally:
-            # This session contains no conversation messages; only its temporary metadata is removed.
-            try:
-                await self.client.delete(f"/api/session/{session}", timeout=5)
-            except httpx.HTTPError:
-                pass
+        text = response.json()["data"]["text"].strip()
+        if text.startswith("```json\n") and text.endswith("```"):
+            text = text[8:-3].strip()
+        elif text.startswith("```\n") and text.endswith("```"):
+            text = text[4:-3].strip()
+        return text
 
     async def close(self):
         self.ready = False
         self.available_models = {}
         if self.client:
+            for session in self.sessions.values():
+                try:
+                    await self.client.delete(f"/api/session/{session}", timeout=5)
+                except httpx.HTTPError:
+                    pass
+            self.sessions.clear()
             await self.client.aclose()
             self.client = None
         if self.process and self.process.returncode is None:

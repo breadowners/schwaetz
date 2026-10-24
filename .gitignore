@@ -24,3 +24,14 @@ notes/
 *.mov
 *.docx
 *.pptx
+
+# Local beta identities, usage ledgers and database sidecars
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm

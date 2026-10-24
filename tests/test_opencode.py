@@ -28,7 +28,7 @@ def test_only_exact_active_free_model_is_accepted():
 
 @pytest.mark.parametrize("failed", [False, True])
 @pytest.mark.parametrize("model", [MODEL, GLM_MODEL])
-def test_transient_generation_uses_free_model_and_removes_only_its_empty_session(failed, model):
+def test_transient_generation_uses_free_model_and_removes_its_empty_context_on_close(failed, model):
     calls = []
     def handler(request):
         body = json.loads(request.content) if request.content else None
@@ -55,6 +55,7 @@ def test_transient_generation_uses_free_model_and_removes_only_its_empty_session
                     await runtime.generate("Tutor instructions", [{"role": "user", "content": "Moien!"}], {}, model)
             else:
                 assert await runtime.generate("Tutor instructions", [{"role": "user", "content": "Moien!"}], {}, model) == '{"reply":"Moien!"}'
+            await runtime.close()
     asyncio.run(run())
     assert [c[:2] for c in calls] == [("GET", "/api/model"), ("POST", "/api/session"),
                                      ("POST", "/api/session/ses_test/generate"), ("DELETE", "/api/session/ses_test")]
@@ -87,3 +88,32 @@ def test_catalog_offers_each_validated_model_independently():
     assert list(runtime.available_models) == [GLM_MODEL]
     runtime.update_catalog({"data": [free_model()]})
     assert list(runtime.available_models) == [MODEL]
+
+
+def test_repeated_turns_reuse_only_empty_context_and_recheck_free_price_each_time():
+    calls = []
+    def handler(request):
+        calls.append((request.method, request.url.path))
+        if request.url.path == "/api/model":
+            return httpx.Response(200, json={"data": [free_model()]})
+        if request.url.path == "/api/session":
+            return httpx.Response(200, json={"data": {"id": "ses_empty"}})
+        if request.method == "DELETE":
+            return httpx.Response(204)
+        return httpx.Response(200, json={"data": {"text": '{"reply":"Moien!"}'}})
+    async def run():
+        runtime = OpenCodeRuntime()
+        runtime.ready = True
+        runtime.location = {"directory": "/temporary-empty-directory"}
+        runtime.client = httpx.AsyncClient(base_url="http://127.0.0.1:9999", transport=httpx.MockTransport(handler))
+        await runtime.generate("Tutor", [{"role": "user", "content": "Moien"}], {}, MODEL)
+        await runtime.generate("Tutor", [{"role": "user", "content": "Merci"}], {}, MODEL)
+        assert len(runtime.sessions) == 1
+        await runtime.close()
+        assert not runtime.sessions
+    asyncio.run(run())
+    assert calls.count(("GET", "/api/model")) == 2
+    assert calls.count(("POST", "/api/session")) == 1
+    assert calls.count(("POST", "/api/session/ses_empty/generate")) == 2
+    assert calls.count(("DELETE", "/api/session/ses_empty")) == 1
+    assert not any(path.endswith("/prompt") for _, path in calls)

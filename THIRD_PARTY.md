@@ -18,3 +18,20 @@ The download script retrieves upstream runtime license files and keeps downloade
 artifacts in ignored `models/`. Other packages retain the licenses supplied with
 their distributions. The free OpenCode promotion is an external hosted service,
 not an open-source model distribution or a permanent availability guarantee.
+
+## Listening sources
+
+The listening catalog links to INLL's Poterkëscht publisher pages, podcast RSS
+enclosures, and official textbook companion pages. INLL and the respective
+publishers retain their rights in those recordings, books and transcripts. The
+repository contains source URLs, metadata, original practice guides and generated
+practice questions; no original podcast files, books or full publisher transcripts
+are bundled or relicensed under Apache-2.0. Downloads stay in ignored `.cache/`.
+Public accessibility of a recording does not itself grant redistribution rights;
+check the publisher's terms before mirroring recordings for a hosted audience.
+
+Privately configured translated class notes are read only on personal deployments.
+Public mode ignores those notes. Practice questions and AI translations are study
+support, not official INLL assessments or translations. The project is independent
+and is not presented as endorsed by INLL, ZLS, the University of Luxembourg or the
+listed model providers.
