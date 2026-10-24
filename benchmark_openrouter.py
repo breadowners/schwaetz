@@ -1,12 +1,14 @@
-"""Screen free OpenRouter tutor models using synthetic text, never notes or audio.
+"""Compare OpenRouter tutor models using synthetic text, never notes or audio.
 
 Run with --list to inspect today's catalog without a key or generation requests.
 Otherwise reads OPENROUTER_API_KEY or asks for it with an invisible terminal prompt.
 Outputs are for human language review; successful JSON is not an accuracy score.
+Paid models require --allow-paid, explicit IDs, and a non-resetting key limit <= $1.
 """
 import argparse
 import asyncio
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 import getpass
 import json
 import os
@@ -65,24 +67,48 @@ CASES = [
 ]
 
 
+async def require_capped_paid_key(key):
+    """Require a provider-enforced, non-renewing ceiling before paid generation."""
+    async with byok.new_client(key) as client:
+        response = await client.get("key")
+        byok.check_response(response)
+        data = response.json().get("data", {})
+    try:
+        limit = Decimal(str(data.get("limit")))
+        remaining = Decimal(str(data.get("limit_remaining")))
+        valid = (limit.is_finite() and remaining.is_finite()
+                 and 0 < remaining <= limit <= Decimal("1")
+                 and "limit_reset" in data and data["limit_reset"] is None)
+    except (InvalidOperation, TypeError, ValueError):
+        valid = False
+    if not valid:
+        raise SystemExit("Paid comparison requires a separate OpenRouter key with a positive lifetime "
+                         "limit of US$1 or less, remaining credit, and no automatic limit reset. "
+                         "No paid generation was started for this check.")
+
+
 async def run(args):
+    if args.allow_paid and not args.models:
+        raise SystemExit("Paid mode requires explicit model IDs; no model is chosen automatically.")
     async with httpx.AsyncClient(timeout=20, trust_env=False) as client:
         response = await client.get(byok.BASE_URL + "/models")
         response.raise_for_status()
         catalog = {model["id"]: model for model in response.json()["data"]}
     selected = args.models or DEFAULT_MODELS
     for model in selected:
-        if model == "openrouter/free" or model not in catalog or not byok.is_free(catalog[model]):
-            raise SystemExit(f"Not an explicitly selected, currently zero-priced model: {model}")
+        if model == "openrouter/free" or model not in catalog:
+            raise SystemExit(f"Not an explicitly selected model in the current catalog: {model}")
+        if not args.allow_paid and not byok.is_free(catalog[model]):
+            raise SystemExit(f"Model is not zero-priced; paid mode needs explicit opt-in: {model}")
     for model in selected:
-        print(f"Zero-priced now: {model}")
+        print(f"{'Zero-priced now' if byok.is_free(catalog[model]) else 'Paid opt-in'}: {model}")
     calls = len(selected) * len(CASES) * args.repeats
     print(f"Planned generation requests: {calls}; no automatic retries or model fallback.")
     if args.list:
         print("Catalog check only; no key read and no generation performed.")
         return
     if calls > 40:
-        raise SystemExit("Keep each run to at most 40 requests to leave room within free account limits.")
+        raise SystemExit("Keep each comparison to at most 40 generation requests.")
     key = os.environ.get("OPENROUTER_API_KEY", "").strip()
     if not key:
         if not sys.stdin.isatty():
@@ -90,14 +116,17 @@ async def run(args):
         key = getpass.getpass("OpenRouter API key (hidden, not saved): ").strip()
     if not key:
         raise SystemExit("No key provided; no generation performed.")
-    connected = await byok.connect(key, free_only=True)
+    if args.allow_paid:
+        await require_capped_paid_key(key)
+    connected = await byok.connect(key, free_only=not args.allow_paid)
     allowed = {model["id"].removeprefix(byok.PREFIX) for model in connected}
     if not set(selected).issubset(allowed):
-        raise SystemExit("A selected free model is not available to this account; no generation performed.")
+        raise SystemExit("A selected model is not available to this account; no generation performed.")
     output = Path(__file__).resolve().parent / ".cache" / args.output
     output.parent.mkdir(exist_ok=True)
     report = {"checked_at": datetime.now(timezone.utc).isoformat(),
               "scope": "Synthetic text only; no private notes, recordings or production changes.",
+              "billing": "Paid opt-in with provider key lifetime limit <= US$1" if args.allow_paid else "Free models only",
               "language_quality": "Unscored: fluent human review required; protocol checks are not language grades.",
               "runs": []}
     for model in selected:
@@ -109,7 +138,9 @@ async def run(args):
                 started = time.monotonic()
                 stop = False
                 try:
-                    raw = await byok.generate(key, byok.PREFIX + model, True, instructions,
+                    if args.allow_paid:
+                        await require_capped_paid_key(key)
+                    raw = await byok.generate(key, byok.PREFIX + model, not args.allow_paid, instructions,
                                               [{"role": "user", "content": case["input"]}], schema)
                     parsed = json.loads(raw)
                     valid = isinstance(parsed, dict) and all(isinstance(parsed.get(k), str) for k in schema["required"])
@@ -139,7 +170,8 @@ async def run(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("models", nargs="*")
-    parser.add_argument("--list", action="store_true", help="Check the live free catalog without a key or generation")
+    parser.add_argument("--list", action="store_true", help="Check the live catalog without a key or generation")
+    parser.add_argument("--allow-paid", action="store_true", help="Opt into explicit paid models using a separate, non-resetting key capped at US$1 or less")
     parser.add_argument("--repeats", type=int, choices=(1, 2), default=1)
     parser.add_argument("--output", default="openrouter-benchmark.json", help="Results filename inside .cache")
     args = parser.parse_args()

@@ -53,5 +53,7 @@ zero-priced, without a key or model completion. An actual benchmark uses a hidde
 local terminal prompt or `OPENROUTER_API_KEY`; never paste a key into an issue or
 chat. It sends original synthetic text only and records outputs for human review
 in ignored `.cache/`. Successful JSON and response speed are not accuracy scores.
-The current runner permits only free models. A capped paid-model comparison is
-part of the proposed beta work, not an implemented feature.
+Free-only operation is the default. Paid comparisons require `--allow-paid`,
+explicit model IDs, and a separate provider key with a positive lifetime limit of
+US$1 or less and no automatic limit reset. The runner checks this before each
+completion, with the provider enforcing the cap. See [BETA_SETUP.md](BETA_SETUP.md).
